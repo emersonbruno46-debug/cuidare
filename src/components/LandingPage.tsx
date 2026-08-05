@@ -136,13 +136,14 @@ export default function LandingPage({ onOpenBooking, onNavigateToAdmin }: Landin
 
       {/* HERO SECTION */}
       <section 
-        className="relative min-h-[85vh] flex items-center justify-center text-center px-4 overflow-hidden border-b border-gold/5 bg-cover bg-center" 
+        className="relative min-h-[85vh] flex items-center justify-center text-center px-4 overflow-hidden bg-cover bg-center" 
         style={{ backgroundImage: "url('/BACKGROUND HERO.png')" }}
       >
         {/* Smoky blur and gradient overlay */}
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-luxury-black via-background to-background pointer-events-none z-[1] opacity-75" />
-        <div className="absolute inset-0 bg-black/60 backdrop-blur-[1.5px] z-[1] pointer-events-none" />
-        <div className="absolute inset-0 bg-gradient-to-t from-background via-transparent to-transparent z-[1] pointer-events-none" />
+        <div className="absolute inset-0 bg-black/65 backdrop-blur-[1.5px] z-[1] pointer-events-none" />
+        {/* Solid bottom gradient to fade the light wall/fence of the photo into the background */}
+        <div className="absolute bottom-0 left-0 right-0 h-40 bg-gradient-to-t from-background via-background/95 to-transparent z-[2] pointer-events-none" />
 
         {/* Subtle grid pattern background */}
         <div className="absolute inset-0 bg-[linear-gradient(rgba(212,175,55,0.01)_1px,_transparent_1px),_linear-gradient(90deg,_rgba(212,175,55,0.01)_1px,_transparent_1px)] bg-[size:60px_60px] pointer-events-none z-[1]" />
