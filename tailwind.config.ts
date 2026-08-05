@@ -15,7 +15,7 @@ export default {
     extend: {
       fontFamily: {
         serif: ['"Playfair Display"', 'Georgia', 'serif'],
-        sans: ['"Inter"', '"Outfit"', 'sans-serif'],
+        sans: ['"Manrope"', 'sans-serif'],
       },
       colors: {
         border: "rgba(212, 175, 55, 0.2)",

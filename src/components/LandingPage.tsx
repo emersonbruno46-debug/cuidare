@@ -149,9 +149,9 @@ export default function LandingPage({ onOpenBooking, onNavigateToAdmin }: Landin
 
         <div className="max-w-4xl mx-auto z-10 relative">
           <motion.h1
-            initial={{ opacity: 0, y: 30 }}
+            initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2, duration: 0.8 }}
+            transition={{ delay: 0.1, duration: 0.45, ease: "easeOut" }}
             className="text-4xl sm:text-6xl md:text-7xl font-serif text-white tracking-wide mb-6 leading-tight"
           >
             Beleza, cuidado e <br />
@@ -159,18 +159,18 @@ export default function LandingPage({ onOpenBooking, onNavigateToAdmin }: Landin
           </motion.h1>
 
           <motion.p
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.4, duration: 0.8 }}
+            transition={{ delay: 0.2, duration: 0.45, ease: "easeOut" }}
             className="text-lg sm:text-xl text-gray-300 max-w-2xl mx-auto mb-10 leading-relaxed font-sans font-light"
           >
             Escolha seu serviço, sua profissional preferida e faça seu agendamento online de forma rápida e segura.
           </motion.p>
 
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.6, duration: 0.8 }}
+            transition={{ delay: 0.3, duration: 0.45, ease: "easeOut" }}
             className="flex flex-col sm:flex-row gap-4 justify-center items-center"
           >
             <button
@@ -193,10 +193,10 @@ export default function LandingPage({ onOpenBooking, onNavigateToAdmin }: Landin
       <section id="sobre" className="py-24 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 border-b border-gold/5">
         <div className="grid md:grid-cols-2 gap-16 items-center">
           <motion.div
-            initial={{ opacity: 0, x: -30 }}
-            whileInView={{ opacity: 1, x: 0 }}
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            transition={{ duration: 0.8 }}
+            transition={{ duration: 0.45, ease: "easeOut" }}
             className="space-y-6"
           >
             <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full glass-panel border border-gold/30 text-gold text-xs font-semibold uppercase tracking-wider">
@@ -205,7 +205,7 @@ export default function LandingPage({ onOpenBooking, onNavigateToAdmin }: Landin
             <h2 className="text-3xl sm:text-5xl font-serif text-white leading-tight">
               Um conceito completo de cuidado para você
             </h2>
-            <p className="text-gray-300 leading-relaxed font-light">
+            <p className="text-gray-300 leading-relaxed font-light font-sans">
               O **Cuidare Studio de Beleza** foi planejado para atender todas as demandas na área de beleza e bem-estar em um único endereço. 
               São **4 andares inteiramente dedicados à sua autoestima**, com infraestrutura de ponta, conforto absoluto e equipes altamente capacitadas.
             </p>
@@ -222,16 +222,16 @@ export default function LandingPage({ onOpenBooking, onNavigateToAdmin }: Landin
           </motion.div>
 
           <motion.div
-            initial={{ opacity: 0, x: 30 }}
-            whileInView={{ opacity: 1, x: 0 }}
+            initial={{ opacity: 0, y: 25 }}
+            whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            transition={{ duration: 0.8 }}
+            transition={{ duration: 0.45, ease: "easeOut" }}
             className="relative h-[450px] rounded-2xl overflow-hidden border border-gold/20"
           >
             {/* Elegant Background Card Stack mockup inside salon space */}
             <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent z-10" />
             <div className="absolute inset-0 bg-luxury-dark/50 flex flex-col justify-end p-8 z-20">
-              <span className="text-gold font-medium text-sm uppercase tracking-widest mb-2">Estrutura Premium</span>
+              <span className="text-gold font-medium text-sm uppercase tracking-widest mb-2 font-sans">Estrutura Premium</span>
               <h3 className="text-2xl text-white font-serif mb-3">Atendimento integrado e personalizado</h3>
               <p className="text-gray-400 text-sm font-light">
                 Do design de sobrancelhas e unhas a tratamentos estéticos avançados com laser, cosmética inteligente e cronogramas capilares profundos.
@@ -259,7 +259,7 @@ export default function LandingPage({ onOpenBooking, onNavigateToAdmin }: Landin
         </div>
 
         {/* Categories Tab Selector */}
-        <div className="flex flex-wrap gap-2 justify-center mb-12">
+        <div className="flex flex-wrap gap-2 justify-center mb-12 p-1.5 bg-luxury-black/60 rounded-2xl border border-gold/10 max-w-5xl mx-auto backdrop-blur-md">
           {categories.map((cat) => {
             const Icon = cat.icon;
             const isActive = activeCategory === cat.id;
@@ -267,12 +267,16 @@ export default function LandingPage({ onOpenBooking, onNavigateToAdmin }: Landin
               <button
                 key={cat.id}
                 onClick={() => setActiveCategory(cat.id)}
-                className={`flex items-center gap-2 px-5 py-3 rounded-xl border text-sm font-semibold transition-all duration-300 ${
-                  isActive 
-                    ? 'bg-gold text-black border-gold shadow-lg shadow-gold/15' 
-                    : 'bg-luxury-dark/40 hover:bg-luxury-dark/80 text-gray-300 border-gold/10 hover:border-gold/30'
-                }`}
+                className="relative flex items-center gap-2 px-5 py-3 rounded-xl text-sm font-semibold transition-colors duration-300 z-10"
+                style={{ color: isActive ? '#000' : '#d1d5db' }}
               >
+                {isActive && (
+                  <motion.div 
+                    layoutId="activeTabPill"
+                    className="absolute inset-0 bg-gold-gradient rounded-xl -z-10 shadow-lg shadow-gold/15"
+                    transition={{ type: "spring", stiffness: 350, damping: 25 }}
+                  />
+                )}
                 <Icon size={16} />
                 {cat.name}
               </button>
@@ -366,37 +370,6 @@ export default function LandingPage({ onOpenBooking, onNavigateToAdmin }: Landin
 
       {/* PROFISSIONAIS */}
       <section id="profissionais" className="py-24 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 border-b border-gold/5">
-        
-        {/* Smoky Image Banner for Professionals */}
-        <motion.div 
-          initial={{ opacity: 0, y: 30 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.8 }}
-          className="relative w-full h-[250px] sm:h-[350px] md:h-[450px] rounded-2xl overflow-hidden mb-16 border border-gold/15"
-        >
-          <img 
-            src="/PROFISSIONAIS.png" 
-            alt="Profissionais Cuidare" 
-            className="w-full h-full object-cover object-center"
-          />
-          {/* Smoky gradient and blur overlay */}
-          <div className="absolute inset-0 bg-gradient-to-t from-background via-black/55 to-black/10 z-[1] pointer-events-none" />
-          <div className="absolute inset-0 bg-gradient-to-r from-background via-transparent to-background z-[1] pointer-events-none" />
-          <div className="absolute inset-0 bg-black/35 backdrop-blur-[0.5px] z-[1] pointer-events-none" />
-          <div className="absolute inset-0 flex flex-col justify-end p-6 sm:p-10 text-left z-10 pointer-events-none">
-            <span className="text-gold font-medium text-xs uppercase tracking-widest mb-2 flex items-center gap-1.5">
-              <Sparkles size={12} className="animate-pulse" /> Nosso Time de Especialistas
-            </span>
-            <h3 className="text-2xl sm:text-4xl text-white font-serif font-semibold leading-tight">
-              Cuidado completo, integrado e personalizado
-            </h3>
-            <p className="text-gray-300 text-xs sm:text-sm font-light mt-2 max-w-xl">
-              Equipe de especialistas reunida em um espaço de 4 andares planejado exclusivamente para a sua beleza e bem-estar.
-            </p>
-          </div>
-        </motion.div>
-
         <div className="text-center max-w-2xl mx-auto mb-16">
           <h2 className="text-3xl sm:text-5xl font-serif text-white mb-4">Nossas Profissionais</h2>
           <p className="text-gray-400 font-light">
@@ -404,34 +377,34 @@ export default function LandingPage({ onOpenBooking, onNavigateToAdmin }: Landin
           </p>
         </div>
 
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-8">
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-8 items-stretch">
           {professionals.map((prof) => (
             <motion.div
-              whileHover={{ y: -8 }}
+              whileHover={{ y: -6 }}
               key={prof.id}
-              className="glass-panel rounded-2xl overflow-hidden flex flex-col justify-between"
+              className="glass-panel rounded-2xl overflow-hidden flex flex-col justify-between h-full border border-gold/15 hover:border-gold/30 transition-all duration-300"
             >
               {/* Header block with elegant gradient profile placeholder */}
-              <div className="relative p-6 bg-gradient-to-b from-luxury-dark to-transparent flex items-center gap-4">
-                <div className="w-16 h-16 rounded-full bg-gradient-to-tr from-gold/40 to-gold/10 border border-gold/45 flex items-center justify-center text-gold font-serif text-2xl font-bold">
+              <div className="relative p-6 bg-gradient-to-b from-luxury-dark/60 to-transparent flex items-center gap-4 border-b border-white/5">
+                <div className="w-14 h-14 rounded-full bg-gradient-to-tr from-gold/30 to-gold/5 border border-gold/20 flex items-center justify-center text-gold font-serif text-xl font-bold">
                   {prof.name[0]}
                 </div>
                 <div>
-                  <h3 className="text-xl font-serif text-white">{prof.name}</h3>
-                  <span className="text-xs text-gold uppercase tracking-wider font-semibold block">{prof.role}</span>
+                  <h3 className="text-lg font-serif text-white">{prof.name}</h3>
+                  <span className="text-[10px] text-gold uppercase tracking-wider font-semibold block mt-0.5">{prof.role}</span>
                 </div>
               </div>
 
               {/* Bio & Specialties */}
-              <div className="px-6 pb-6 flex-grow flex flex-col justify-between gap-6">
+              <div className="p-6 flex-grow flex flex-col justify-between gap-6">
                 <div>
-                  <p className="text-gray-300 text-sm font-light leading-relaxed mb-4">
+                  <p className="text-gray-300 text-sm font-light leading-relaxed mb-4 h-[72px] line-clamp-3 overflow-hidden text-ellipsis">
                     "{prof.bio}"
                   </p>
                   
-                  <div className="flex flex-wrap gap-1.5">
+                  <div className="flex flex-wrap gap-1.5 min-h-[50px] items-start">
                     {prof.specialties.map((spec, i) => (
-                      <span key={i} className="text-[10px] px-2.5 py-1 bg-white/5 border border-white/10 text-gray-300 rounded-full font-medium">
+                      <span key={i} className="text-[9px] px-2.5 py-1 bg-white/5 border border-white/10 text-gray-300 rounded font-medium">
                         {spec}
                       </span>
                     ))}
@@ -559,7 +532,7 @@ export default function LandingPage({ onOpenBooking, onNavigateToAdmin }: Landin
               </div>
               <div className="absolute bottom-3 right-3">
                 <a
-                  href="https://maps.google.com"
+                  href="https://www.google.com/maps/search/?api=1&query=Rua+Paracatu,+15,+Taiobeiras+-+MG"
                   target="_blank"
                   rel="noreferrer"
                   className="px-3 py-1.5 bg-black/85 hover:bg-gold hover:text-black border border-gold/30 hover:border-gold text-gold text-[10px] uppercase font-bold rounded transition-colors"

@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Outfit:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700;800&family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -7,48 +7,66 @@
 @layer base {
   body {
     @apply bg-background text-foreground font-sans antialiased overflow-x-hidden;
-    background-color: #050505;
+    background-color: #030303;
     background-image: 
-      radial-gradient(circle at 50% -20%, rgba(212, 175, 55, 0.15) 0%, transparent 60%),
-      radial-gradient(circle at 0% 100%, rgba(212, 175, 55, 0.03) 0%, transparent 40%);
+      radial-gradient(circle at 50% -25%, rgba(212, 175, 55, 0.18) 0%, transparent 60%),
+      radial-gradient(circle at 100% 100%, rgba(212, 175, 55, 0.04) 0%, transparent 40%),
+      radial-gradient(circle at 0% 50%, rgba(212, 175, 55, 0.02) 0%, transparent 45%);
   }
 
   h1, h2, h3, h4, h5, h6 {
-    @apply font-serif tracking-wide text-foreground;
+    @apply font-serif tracking-wide text-white;
   }
 }
 
 /* Custom Luxury Scrollbar */
 ::-webkit-scrollbar {
-  width: 8px;
+  width: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: #0a0a0a;
+  background: #050505;
 }
 ::-webkit-scrollbar-thumb {
-  background: #2a2a2a;
-  border-radius: 4px;
+  background: #1c1c1c;
+  border-radius: 10px;
 }
 ::-webkit-scrollbar-thumb:hover {
   background: #d4af37;
 }
 
-/* Glassmorphism Classes */
+/* Luxury Glassmorphism */
 .glass-panel {
-  background: rgba(20, 20, 20, 0.7);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(212, 175, 55, 0.15);
+  background: rgba(10, 10, 12, 0.45);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(212, 175, 55, 0.12);
+  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.4);
 }
 
 .glass-panel-hover {
   @apply transition-all duration-300;
 }
 .glass-panel-hover:hover {
-  background: rgba(30, 30, 30, 0.85);
+  background: rgba(18, 18, 20, 0.65);
   border-color: rgba(212, 175, 55, 0.35);
-  box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.7), 0 0 15px rgba(212, 175, 55, 0.05);
+  box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.8), 0 0 20px rgba(212, 175, 55, 0.1);
 }
+
+.glass-button {
+  background: rgba(255, 255, 255, 0.02);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(212, 175, 55, 0.2);
+  color: #e5e7eb;
+  @apply transition-all duration-300;
+}
+.glass-button:hover {
+  background: rgba(212, 175, 55, 0.12);
+  border-color: #d4af37;
+  color: #fff;
+  box-shadow: 0 0 15px rgba(212, 175, 55, 0.15);
+}
+
 
 /* Gold Gradient Text */
 .text-gold-gradient {

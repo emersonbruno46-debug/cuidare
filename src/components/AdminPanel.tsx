@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { motion } from 'framer-motion';
 import { 
   TrendingUp, DollarSign, Calendar, Users, ArrowLeft, 
   Trash2, AlertCircle, Search
@@ -206,14 +207,21 @@ export default function AdminPanel({
                   <button
                     key={tab.id}
                     onClick={() => setOwnerTab(tab.id as any)}
-                    className={`flex items-center gap-2 pb-4 text-sm font-semibold tracking-wide border-b-2 transition-all relative ${
+                    className={`flex items-center gap-2 pb-4 text-sm font-semibold tracking-wide transition-all relative ${
                       isActive 
-                        ? 'border-gold text-gold font-bold' 
-                        : 'border-transparent text-gray-400 hover:text-white'
+                        ? 'text-gold font-bold' 
+                        : 'text-gray-400 hover:text-white'
                     }`}
                   >
                     <Icon size={16} />
                     {tab.name}
+                    {isActive && (
+                      <motion.div 
+                        layoutId="activeAdminTabLine"
+                        className="absolute bottom-0 left-0 right-0 h-[2px] bg-gold"
+                        transition={{ type: "spring", stiffness: 350, damping: 28 }}
+                      />
+                    )}
                   </button>
                 );
               })}

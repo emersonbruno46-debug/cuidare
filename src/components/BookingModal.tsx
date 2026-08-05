@@ -283,9 +283,10 @@ export default function BookingModal({
             {step === 1 && (
               <motion.div
                 key="step1"
-                initial={{ opacity: 0, x: 20 }}
+                initial={{ opacity: 0, x: 12 }}
                 animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -20 }}
+                exit={{ opacity: 0, x: -12 }}
+                transition={{ duration: 0.25, ease: "easeOut" }}
                 className="space-y-6"
               >
                 <div className="flex flex-col sm:flex-row gap-4 items-center justify-between">
@@ -322,10 +323,10 @@ export default function BookingModal({
                     <div 
                       key={service.id}
                       onClick={() => setSelectedService(service)}
-                      className={`p-4 rounded-xl border transition-all cursor-pointer flex justify-between items-center ${
+                      className={`p-4 rounded-xl border transition-all duration-200 cursor-pointer flex justify-between items-center backdrop-blur-md ${
                         selectedService?.id === service.id
-                          ? 'border-gold bg-gold/5 shadow-md shadow-gold/5'
-                          : 'border-gold/10 hover:border-gold/30 bg-luxury-dark/40 hover:bg-luxury-dark/70'
+                          ? 'border-gold bg-gold/10 shadow-lg shadow-gold/10 scale-[1.01]'
+                          : 'border-gold/10 hover:border-gold/35 bg-white/[0.02] hover:bg-white/[0.07]'
                       }`}
                     >
                       <div>
@@ -361,9 +362,10 @@ export default function BookingModal({
             {step === 2 && (
               <motion.div
                 key="step2"
-                initial={{ opacity: 0, x: 20 }}
+                initial={{ opacity: 0, x: 12 }}
                 animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -20 }}
+                exit={{ opacity: 0, x: -12 }}
+                transition={{ duration: 0.25, ease: "easeOut" }}
                 className="space-y-6"
               >
                 <div className="text-center mb-4">
@@ -377,10 +379,10 @@ export default function BookingModal({
                     setSelectedProfessional(null);
                     setIsFirstAvailable(true);
                   }}
-                  className={`p-4 rounded-xl border transition-all cursor-pointer flex justify-between items-center ${
+                  className={`p-4 rounded-xl border transition-all duration-200 cursor-pointer flex justify-between items-center backdrop-blur-md ${
                     isFirstAvailable 
-                      ? 'border-gold bg-gold/5 shadow-md' 
-                      : 'border-gold/10 hover:border-gold/30 bg-luxury-dark/40 hover:bg-luxury-dark/70'
+                      ? 'border-gold bg-gold/10 shadow-lg shadow-gold/10 scale-[1.01]' 
+                      : 'border-gold/10 hover:border-gold/35 bg-white/[0.02] hover:bg-white/[0.07]'
                   }`}
                 >
                   <div className="flex items-center gap-3">
@@ -404,10 +406,10 @@ export default function BookingModal({
                         setSelectedProfessional(pro);
                         setIsFirstAvailable(false);
                       }}
-                      className={`p-4 rounded-xl border transition-all cursor-pointer flex flex-col justify-between ${
+                      className={`p-4 rounded-xl border transition-all duration-200 cursor-pointer flex flex-col justify-between backdrop-blur-md ${
                         selectedProfessional?.id === pro.id && !isFirstAvailable
-                          ? 'border-gold bg-gold/5 shadow-md'
-                          : 'border-gold/10 hover:border-gold/30 bg-luxury-dark/40 hover:bg-luxury-dark/70'
+                          ? 'border-gold bg-gold/10 shadow-lg shadow-gold/10 scale-[1.01]'
+                          : 'border-gold/10 hover:border-gold/35 bg-white/[0.02] hover:bg-white/[0.07]'
                       }`}
                     >
                       <div className="flex items-center gap-3 mb-3">
@@ -444,9 +446,10 @@ export default function BookingModal({
             {step === 3 && (
               <motion.div
                 key="step3"
-                initial={{ opacity: 0, x: 20 }}
+                initial={{ opacity: 0, x: 12 }}
                 animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -20 }}
+                exit={{ opacity: 0, x: -12 }}
+                transition={{ duration: 0.25, ease: "easeOut" }}
                 className="space-y-6"
               >
                 <div className="text-center mb-2">
@@ -474,10 +477,10 @@ export default function BookingModal({
                             setSelectedDate(dateString);
                             setSelectedTime(''); // Reset hour selection
                           }}
-                          className={`flex flex-col items-center justify-center p-3 rounded-xl border min-w-[72px] transition-all duration-300 ${
+                          className={`flex flex-col items-center justify-center p-3 rounded-xl border min-w-[72px] transition-all duration-200 backdrop-blur-sm ${
                             isSelected 
-                              ? 'bg-gold text-black border-gold shadow-md' 
-                              : 'bg-luxury-dark/50 text-gray-400 hover:text-white border-gold/10 hover:border-gold/30'
+                              ? 'bg-gold-gradient text-black border-gold shadow-lg shadow-gold/15 scale-[1.03]' 
+                              : 'bg-white/[0.02] hover:bg-white/[0.07] text-gray-400 hover:text-white border-gold/10 hover:border-gold/30'
                           }`}
                         >
                           <span className="text-[10px] uppercase font-bold tracking-wider">{dayName.replace('.', '')}</span>
@@ -505,10 +508,10 @@ export default function BookingModal({
                             <button
                               key={time}
                               onClick={() => setSelectedTime(time)}
-                              className={`h-11 rounded-lg border text-sm font-semibold transition-all duration-300 ${
+                              className={`h-11 rounded-lg border text-sm font-semibold transition-all duration-200 backdrop-blur-sm ${
                                 isSelected 
-                                  ? 'bg-gold text-black border-gold' 
-                                  : 'bg-luxury-dark/40 hover:bg-luxury-dark/80 text-gray-300 border-gold/10 hover:border-gold/30'
+                                  ? 'bg-gold-gradient text-black border-gold shadow-lg shadow-gold/15 scale-[1.03]' 
+                                  : 'bg-white/[0.02] hover:bg-white/[0.07] text-gray-300 border-gold/10 hover:border-gold/30'
                               }`}
                             >
                               {time}
@@ -530,9 +533,10 @@ export default function BookingModal({
             {step === 4 && (
               <motion.div
                 key="step4"
-                initial={{ opacity: 0, x: 20 }}
+                initial={{ opacity: 0, x: 12 }}
                 animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -20 }}
+                exit={{ opacity: 0, x: -12 }}
+                transition={{ duration: 0.25, ease: "easeOut" }}
               >
                 <div className="text-center mb-6">
                   <h4 className="text-sm uppercase tracking-wider text-gold font-semibold mb-1">Confirme seus dados para finalizar</h4>
@@ -617,8 +621,9 @@ export default function BookingModal({
             {step === 5 && (
               <motion.div
                 key="step5"
-                initial={{ opacity: 0, scale: 0.95 }}
+                initial={{ opacity: 0, scale: 0.96 }}
                 animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.25, ease: "easeOut" }}
                 className="text-center py-6 space-y-6"
               >
                 <div className="w-16 h-16 rounded-full bg-gold-gradient text-black flex items-center justify-center mx-auto shadow-lg shadow-gold/25 animate-bounce">
