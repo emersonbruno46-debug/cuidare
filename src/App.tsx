@@ -229,7 +229,7 @@ function App() {
   };
 
   return (
-    <>
+    <div className="overflow-x-hidden w-full relative min-h-screen">
       {view === 'landing' ? (
         <LandingPage 
           onOpenBooking={handleOpenBooking} 
@@ -253,7 +253,7 @@ function App() {
           onAddBooking={handleAddBooking}
         />
       )}
-    </>
+    </div>
   );
 }
 
