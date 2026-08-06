@@ -149,9 +149,8 @@ export default function LandingPage({ onOpenBooking, onNavigateToAdmin }: Landin
         <div className="absolute inset-0 bg-[linear-gradient(rgba(212,175,55,0.01)_1px,_transparent_1px),_linear-gradient(90deg,_rgba(212,175,55,0.01)_1px,_transparent_1px)] bg-[size:60px_60px] pointer-events-none z-[1]" />
 
         <div className="max-w-7xl mx-auto w-full z-10 relative grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-8 items-center">
-          
-          {/* LEFT COLUMN: Text Content */}
-          <div className="lg:col-span-7 flex flex-col items-start text-left space-y-6 md:space-y-8 max-w-2xl lg:max-w-none z-10 relative">
+           {/* LEFT COLUMN: Text Content */}
+          <div className="lg:col-span-7 flex flex-col items-center text-center lg:items-start lg:text-left space-y-6 md:space-y-8 max-w-2xl lg:max-w-none z-10 relative">
 
             <motion.h1
               initial={{ opacity: 0, y: 20 }}
@@ -177,7 +176,7 @@ export default function LandingPage({ onOpenBooking, onNavigateToAdmin }: Landin
               initial={{ opacity: 0, y: 15 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.3, duration: 0.45, ease: "easeOut" }}
-              className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto pt-2"
+              className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto pt-2 justify-center lg:justify-start"
             >
               <button
                 onClick={() => onOpenBooking()}
@@ -304,7 +303,7 @@ export default function LandingPage({ onOpenBooking, onNavigateToAdmin }: Landin
         </div>
 
         {/* Categories Tab Selector */}
-        <div className="flex flex-wrap gap-2 justify-center mb-12 p-1.5 bg-luxury-black/60 rounded-2xl border border-gold/10 max-w-5xl mx-auto backdrop-blur-md">
+        <div className="flex overflow-x-auto md:flex-wrap flex-nowrap gap-2 justify-start md:justify-center mb-12 p-2 md:p-1.5 bg-luxury-black/60 rounded-2xl border border-gold/10 max-w-5xl mx-auto backdrop-blur-md no-scrollbar px-3 md:px-1.5">
           {categories.map((cat) => {
             const Icon = cat.icon;
             const isActive = activeCategory === cat.id;
@@ -312,7 +311,7 @@ export default function LandingPage({ onOpenBooking, onNavigateToAdmin }: Landin
               <button
                 key={cat.id}
                 onClick={() => setActiveCategory(cat.id)}
-                className="relative flex items-center gap-2 px-5 py-3 rounded-xl text-sm font-semibold transition-colors duration-300 z-10"
+                className="relative flex items-center gap-2 px-5 py-3 rounded-xl text-sm font-semibold transition-colors duration-300 z-10 shrink-0"
                 style={{ color: isActive ? '#000' : '#d1d5db' }}
               >
                 {isActive && (
@@ -374,7 +373,7 @@ export default function LandingPage({ onOpenBooking, onNavigateToAdmin }: Landin
                     )}
                   </div>
 
-                  <div className="flex items-center justify-between md:justify-end gap-8 pt-4 md:pt-0 border-t border-white/5 md:border-none">
+                  <div className="flex items-center justify-between md:justify-end gap-8 pt-4 md:pt-0 border-t border-gold/15 md:border-none">
                     <div className="text-sm text-gray-400 md:w-24">
                       <span className="md:hidden text-xs block text-gray-500 uppercase">Duração</span>
                       {service.duration} min
@@ -572,7 +571,7 @@ export default function LandingPage({ onOpenBooking, onNavigateToAdmin }: Landin
               <iframe
                 title="Mapa Cuidare"
                 src="https://maps.google.com/maps?q=Rua%20Paracatu,%2015,%20Centro,%20Taiobeiras%20-%20MG&t=&z=16&ie=UTF8&iwloc=&output=embed"
-                className="w-full h-full border-0 filter grayscale invert contrast-[0.9] opacity-70 group-hover:opacity-100 group-hover:grayscale-0 group-hover:invert-0 group-hover:contrast-100 transition-all duration-500"
+                className="w-full h-full border-0 lg:filter lg:grayscale lg:invert lg:contrast-[0.9] lg:opacity-70 lg:group-hover:opacity-100 lg:group-hover:grayscale-0 lg:group-hover:invert-0 lg:group-hover:contrast-100 transition-all duration-500"
                 allowFullScreen
                 loading="lazy"
               />

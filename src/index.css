@@ -103,3 +103,12 @@
   transform: translateY(0);
   transition: opacity 300ms ease, transform 300ms ease;
 }
+
+/* Hide scrollbars for clean carousel selectors */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
