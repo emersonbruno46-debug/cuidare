@@ -575,20 +575,21 @@ export default function LandingPage({ onOpenBooking, onNavigateToAdmin }: Landin
               </div>
             </div>
 
-            {/* Simulating an interactive/premium Google Maps component */}
-            <div className="h-44 rounded-xl border border-gold/20 bg-luxury-dark/80 relative flex items-center justify-center overflow-hidden">
-              <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_rgba(212,175,55,0.06)_0%,_transparent_100%)]" />
-              <div className="text-center space-y-2 z-10 p-4">
-                <MapPin className="text-gold h-10 w-10 mx-auto animate-bounce" />
-                <span className="text-xs uppercase tracking-widest text-gray-400 block font-semibold">Taiobeiras - Centro</span>
-                <span className="text-[10px] text-gray-500 block">Rua Paracatu, 15 (Próximo à Praça Central)</span>
-              </div>
-              <div className="absolute bottom-3 right-3">
+            {/* Real interactive Google Maps iframe component */}
+            <div className="h-44 rounded-xl border border-gold/20 overflow-hidden relative group">
+              <iframe
+                title="Mapa Cuidare"
+                src="https://maps.google.com/maps?q=Rua%20Paracatu,%2015,%20Centro,%20Taiobeiras%20-%20MG&t=&z=16&ie=UTF8&iwloc=&output=embed"
+                className="w-full h-full border-0 filter grayscale invert contrast-[0.9] opacity-70 group-hover:opacity-100 group-hover:grayscale-0 group-hover:invert-0 group-hover:contrast-100 transition-all duration-500"
+                allowFullScreen
+                loading="lazy"
+              />
+              <div className="absolute bottom-3 right-3 z-10">
                 <a
                   href="https://share.google/q3b5XS6s53zXU6MAp"
                   target="_blank"
                   rel="noreferrer"
-                  className="px-3 py-1.5 bg-black/85 hover:bg-gold hover:text-black border border-gold/30 hover:border-gold text-gold text-[10px] uppercase font-bold rounded transition-colors"
+                  className="px-3 py-1.5 bg-black/90 hover:bg-gold hover:text-black border border-gold/30 hover:border-gold text-gold text-[10px] uppercase font-bold rounded transition-colors shadow-lg"
                 >
                   Abrir no Maps
                 </a>
