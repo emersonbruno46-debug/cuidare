@@ -279,7 +279,7 @@ export default function LandingPage({ onOpenBooking, onNavigateToAdmin }: Landin
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.45, ease: "easeOut" }}
-            className="relative h-[450px] rounded-2xl overflow-hidden border border-gold/20"
+            className="relative h-[450px] rounded-2xl overflow-hidden border border-gold/20 group"
           >
             {/* Elegant Background Card Stack mockup inside salon space */}
             <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent z-10" />
@@ -290,13 +290,13 @@ export default function LandingPage({ onOpenBooking, onNavigateToAdmin }: Landin
                 Do design de sobrancelhas e unhas a tratamentos estéticos avançados com laser, cosmética inteligente e cronogramas capilares profundos.
               </p>
             </div>
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_#d4af37,_transparent_50%)] opacity-30 animate-pulse" />
-            <div className="w-full h-full bg-[#111] flex items-center justify-center">
-              {/* Graphic element representing multiple services and premium layout */}
-              <div className="space-y-4 text-center">
-                <Sparkles className="h-16 w-16 text-gold mx-auto opacity-70 animate-bounce" />
-                <div className="font-serif italic text-gold text-lg">Cuidar de você é a nossa missão!</div>
-              </div>
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_#d4af37,_transparent_50%)] opacity-30 animate-pulse z-10" />
+            <div className="w-full h-full bg-[#111] relative overflow-hidden">
+              <img 
+                src="/BACKGROUND HERO.png" 
+                alt="Estrutura Cuidare" 
+                className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-out z-0"
+              />
             </div>
           </motion.div>
         </div>
@@ -585,7 +585,7 @@ export default function LandingPage({ onOpenBooking, onNavigateToAdmin }: Landin
               </div>
               <div className="absolute bottom-3 right-3">
                 <a
-                  href="https://www.google.com/maps/search/?api=1&query=Rua+Paracatu,+15,+Taiobeiras+-+MG"
+                  href="https://share.google/q3b5XS6s53zXU6MAp"
                   target="_blank"
                   rel="noreferrer"
                   className="px-3 py-1.5 bg-black/85 hover:bg-gold hover:text-black border border-gold/30 hover:border-gold text-gold text-[10px] uppercase font-bold rounded transition-colors"
