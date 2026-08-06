@@ -136,18 +136,14 @@ export default function LandingPage({ onOpenBooking, onNavigateToAdmin }: Landin
 
       {/* HERO SECTION */}
       <section 
-        className="relative min-h-[90vh] lg:min-h-screen flex items-center justify-center px-4 sm:px-6 lg:px-8 overflow-hidden py-16 md:py-24"
+        className="relative min-h-[90vh] lg:min-h-screen flex items-center justify-center px-4 sm:px-6 lg:px-8 overflow-hidden py-16 md:py-24 bg-cover bg-center"
+        style={{ backgroundImage: "url('/BACKGROUND HERO.png')" }}
       >
-        {/* Background image of the hero (faded/blurred) */}
-        <div 
-          className="absolute inset-0 bg-cover bg-center opacity-30 mix-blend-overlay pointer-events-none" 
-          style={{ backgroundImage: "url('/BACKGROUND HERO.png')" }}
-        />
         {/* Smoky blur and gradient overlay */}
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-luxury-black via-background to-background pointer-events-none z-[1] opacity-80" />
-        <div className="absolute inset-0 bg-black/50 backdrop-blur-[1px] z-[1] pointer-events-none" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-luxury-black via-background to-background pointer-events-none z-[1] opacity-75" />
+        <div className="absolute inset-0 bg-black/65 backdrop-blur-[1.5px] z-[1] pointer-events-none" />
         {/* Solid bottom gradient to fade the layout into the background */}
-        <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-background via-background/95 to-transparent z-[2] pointer-events-none" />
+        <div className="absolute bottom-0 left-0 right-0 h-40 bg-gradient-to-t from-background via-background/95 to-transparent z-[2] pointer-events-none" />
 
         {/* Subtle grid pattern background */}
         <div className="absolute inset-0 bg-[linear-gradient(rgba(212,175,55,0.01)_1px,_transparent_1px),_linear-gradient(90deg,_rgba(212,175,55,0.01)_1px,_transparent_1px)] bg-[size:60px_60px] pointer-events-none z-[1]" />
