@@ -745,7 +745,7 @@ export default function BookingModal({
                   (step === 2 && !selectedProfessional && !isFirstAvailable) ||
                   (step === 3 && (!selectedDate || !selectedTime))
                     ? 'bg-gray-800 text-gray-500 cursor-not-allowed border border-white/5'
-                    : 'bg-gold text-black hover:bg-gold-light'
+                    : 'bg-gold text-white hover:bg-gold-light'
                 }`}
               >
                 Avançar <ArrowRight size={14} />
@@ -756,7 +756,7 @@ export default function BookingModal({
                   const formBtn = document.getElementById('submit-booking-form-btn');
                   if (formBtn) formBtn.click();
                 }}
-                className={`px-6 py-2.5 bg-gold-gradient text-black font-bold uppercase tracking-wider text-xs rounded-lg hover:shadow-lg hover:shadow-gold/20 active:scale-95 transition-all`}
+                className={`px-6 py-2.5 bg-gold-gradient text-white font-bold uppercase tracking-wider text-xs rounded-lg hover:shadow-lg hover:shadow-gold/20 active:scale-95 transition-all`}
               >
                 Concluir Agendamento
               </button>

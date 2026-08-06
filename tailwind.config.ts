@@ -18,23 +18,37 @@ export default {
         sans: ['"Manrope"', 'sans-serif'],
       },
       colors: {
-        border: "rgba(212, 175, 55, 0.2)",
-        input: "rgba(212, 175, 55, 0.1)",
-        ring: "#d4af37",
-        background: "#0a0a0a",
-        foreground: "#f5f5f7",
+        border: "rgba(169, 141, 124, 0.2)",
+        input: "rgba(169, 141, 124, 0.1)",
+        ring: "#C8A45D",
+        background: "#FFF8F2",
+        foreground: "#2E1B13",
+        white: "#2E1B13", // Map white to dark brown
+        black: "#FFF8F2", // Map black to cream
         gold: {
-          light: "#f3e5ab",
-          DEFAULT: "#d4af37",
-          dark: "#b58920",
-          deep: "#8a6623",
-          muted: "rgba(212, 175, 55, 0.15)",
+          light: "#EDD9A3",
+          DEFAULT: "#C8A45D",
+          dark: "#D9B87A",
+          deep: "#4B342B",
+          muted: "rgba(200, 164, 93, 0.15)",
         },
         luxury: {
-          black: "#0e0e10",
-          dark: "#1c1c1e",
-          gray: "#2c2c2e",
-          light: "#efeff4",
+          black: "#2E1B13",  // Gizelly primary text
+          dark: "#F4EDE4",   // light background card
+          gray: "#5C3D30",   // Gizelly body text
+          light: "#FFF8F2",  // cream background
+        },
+        gray: {
+          50: "#FFFDFB",
+          100: "#FAF4EE",
+          200: "#F4EDE4", // light warm cream
+          300: "#5C3D30", // Gizelly body text (brown)
+          400: "#8A6658",
+          500: "#9A7968", // Gizelly muted
+          600: "#A98D7C",
+          700: "#4B342B",
+          800: "#3A2820",
+          900: "#2E1B13",
         }
       },
       borderRadius: {

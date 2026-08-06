@@ -61,7 +61,7 @@ export default function LandingPage({ onOpenBooking, onNavigateToAdmin }: Landin
       <nav className="sticky top-0 z-50 glass-panel border-b border-gold/10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex justify-between items-center">
           <div className="flex items-center">
-            <Logo className="h-12 w-auto text-gold" />
+            <Logo className="h-16 w-auto text-gold" />
           </div>
 
           {/* Desktop Nav */}
@@ -72,7 +72,7 @@ export default function LandingPage({ onOpenBooking, onNavigateToAdmin }: Landin
             <a href="#horarios" className="text-sm font-medium text-gray-300 hover:text-gold transition-colors">Horários & Local</a>
             <button 
               onClick={() => onOpenBooking()}
-              className="px-6 h-11 bg-gold-gradient text-black text-sm font-semibold rounded-lg hover:shadow-lg hover:shadow-gold/25 transition-all duration-300 active:scale-95"
+              className="px-6 h-11 bg-gold-gradient text-white text-sm font-semibold rounded-lg hover:shadow-lg hover:shadow-gold/25 transition-all duration-300 active:scale-95"
             >
               Agendar Horário
             </button>
@@ -126,7 +126,7 @@ export default function LandingPage({ onOpenBooking, onNavigateToAdmin }: Landin
                 setMobileMenuOpen(false);
                 onOpenBooking();
               }}
-              className="w-full h-12 bg-gold-gradient text-black font-semibold rounded-lg active:scale-95 transition-transform"
+              className="w-full h-12 bg-gold-gradient text-white font-semibold rounded-lg active:scale-95 transition-transform"
             >
               Agendar Horário
             </button>
@@ -152,14 +152,6 @@ export default function LandingPage({ onOpenBooking, onNavigateToAdmin }: Landin
           
           {/* LEFT COLUMN: Text Content */}
           <div className="lg:col-span-7 flex flex-col items-start text-left space-y-6 md:space-y-8 max-w-2xl lg:max-w-none z-10 relative">
-            <motion.div
-              initial={{ opacity: 0, y: 15 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.05, duration: 0.45, ease: "easeOut" }}
-              className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full glass-panel border border-gold/30 text-gold text-xs font-semibold uppercase tracking-widest animate-fade-in"
-            >
-              <Sparkles size={14} className="animate-pulse" /> Taiobeiras / MG
-            </motion.div>
 
             <motion.h1
               initial={{ opacity: 0, y: 20 }}
@@ -189,7 +181,7 @@ export default function LandingPage({ onOpenBooking, onNavigateToAdmin }: Landin
             >
               <button
                 onClick={() => onOpenBooking()}
-                className="w-full sm:w-auto px-8 h-14 bg-gold-gradient text-black font-bold text-base rounded-xl hover:shadow-xl hover:shadow-gold/20 hover:scale-[1.02] active:scale-95 transition-all duration-300 flex items-center justify-center gap-3"
+                className="w-full sm:w-auto px-8 h-14 bg-gold-gradient text-white font-bold text-base rounded-xl hover:shadow-xl hover:shadow-gold/20 hover:scale-[1.02] active:scale-95 transition-all duration-300 flex items-center justify-center gap-3"
               >
                 Agendar meu horário <ArrowRight size={18} />
               </button>
@@ -259,8 +251,8 @@ export default function LandingPage({ onOpenBooking, onNavigateToAdmin }: Landin
               Um conceito completo de cuidado para você
             </h2>
             <p className="text-gray-300 leading-relaxed font-light font-sans">
-              O **Cuidare Studio de Beleza** foi planejado para atender todas as demandas na área de beleza e bem-estar em um único endereço. 
-              São **4 andares inteiramente dedicados à sua autoestima**, com infraestrutura de ponta, conforto absoluto e equipes altamente capacitadas.
+              O <strong className="font-semibold text-white">Cuidare Studio de Beleza</strong> foi planejado para atender todas as demandas na área de beleza e bem-estar em um único endereço. 
+              São <strong className="font-semibold text-white">4 andares inteiramente dedicados à sua autoestima</strong>, com infraestrutura de ponta, conforto absoluto e equipes altamente capacitadas.
             </p>
             <div className="grid grid-cols-2 gap-6 pt-4">
               <div className="glass-panel p-4 rounded-lg">
@@ -469,7 +461,7 @@ export default function LandingPage({ onOpenBooking, onNavigateToAdmin }: Landin
                     // Preselect professional in booking
                     onOpenBooking(undefined);
                   }}
-                  className="w-full h-11 border border-gold/20 hover:border-gold bg-luxury-dark hover:bg-gold hover:text-black text-gray-200 text-xs font-semibold uppercase tracking-wider rounded-xl transition-all duration-300"
+                  className="w-full h-11 border border-gold/30 hover:border-gold bg-gold/10 hover:bg-gold hover:text-white text-gold text-xs font-semibold uppercase tracking-wider rounded-xl transition-all duration-300"
                 >
                   Agendar com {prof.name}
                 </button>
@@ -589,7 +581,7 @@ export default function LandingPage({ onOpenBooking, onNavigateToAdmin }: Landin
                   href="https://share.google/q3b5XS6s53zXU6MAp"
                   target="_blank"
                   rel="noreferrer"
-                  className="px-3 py-1.5 bg-black/90 hover:bg-gold hover:text-black border border-gold/30 hover:border-gold text-gold text-[10px] uppercase font-bold rounded transition-colors shadow-lg"
+                  className="px-3 py-1.5 bg-black/90 hover:bg-gold hover:text-white border border-gold/30 hover:border-gold text-gold text-[10px] uppercase font-bold rounded transition-colors shadow-lg"
                 >
                   Abrir no Maps
                 </a>
@@ -609,7 +601,7 @@ export default function LandingPage({ onOpenBooking, onNavigateToAdmin }: Landin
           </p>
           <button
             onClick={() => onOpenBooking()}
-            className="px-10 h-14 bg-gold text-black hover:bg-gold-light font-bold uppercase tracking-wider text-sm rounded-xl hover:shadow-xl hover:shadow-gold/20 active:scale-95 transition-all duration-300"
+            className="px-10 h-14 bg-gold text-white hover:bg-gold-light font-bold uppercase tracking-wider text-sm rounded-xl hover:shadow-xl hover:shadow-gold/20 active:scale-95 transition-all duration-300"
           >
             Agendar Meu Horário Agora
           </button>
@@ -620,9 +612,8 @@ export default function LandingPage({ onOpenBooking, onNavigateToAdmin }: Landin
       <footer className="bg-luxury-black/90 py-12 border-t border-gold/10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row justify-between items-center gap-6">
           <div className="flex items-center gap-3">
-            <Logo className="h-8 w-auto text-gold" />
+            <Logo className="h-8 w-auto text-[#ffffff]" />
             <div>
-              <span className="font-serif text-sm tracking-widest text-gold block leading-none">CUIDARE</span>
               <span className="text-[8px] uppercase tracking-wider text-gray-500">Copyright © 2026</span>
             </div>
           </div>
