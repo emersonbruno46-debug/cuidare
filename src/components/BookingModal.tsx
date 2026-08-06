@@ -246,20 +246,20 @@ export default function BookingModal({
       />
 
       {/* Modal box */}
-      <motion.div 
+      <motion.div
         initial={{ scale: 0.95, opacity: 0, y: 20 }}
         animate={{ scale: 1, opacity: 1, y: 0 }}
         exit={{ scale: 0.95, opacity: 0, y: 20 }}
-        className="w-full max-w-2xl glass-panel rounded-2xl overflow-hidden shadow-2xl relative z-10"
+        className="w-full max-w-2xl bg-[#FFFDFB] border border-gold/20 rounded-2xl overflow-hidden shadow-2xl relative z-10"
       >
         {/* Header */}
-        <div className="px-6 py-5 border-b border-gold/10 flex justify-between items-center bg-luxury-dark/90">
+        <div className="px-6 py-5 border-b border-gold/15 flex justify-between items-center bg-[#F4EDE4]">
           <div>
             <h3 className="text-xl font-serif text-white tracking-wide">Agendar seu Horário</h3>
             <span className="text-[10px] text-gold uppercase tracking-wider">Cuidare Espaço de Beleza</span>
           </div>
           {step !== 5 && (
-            <button onClick={onClose} className="text-gray-400 hover:text-gold transition-colors">
+            <button onClick={onClose} className="text-gray-500 hover:text-gold transition-colors">
               <X size={20} />
             </button>
           )}
@@ -267,7 +267,7 @@ export default function BookingModal({
 
         {/* Progress Tracker (Steps 1 to 4) */}
         {step < 5 && (
-          <div className="bg-luxury-black border-b border-gold/5 px-6 py-3 flex justify-between text-[10px] uppercase font-semibold text-gray-500 tracking-wider">
+          <div className="bg-[#F4EDE4]/60 border-b border-gold/10 px-6 py-3.5 flex justify-between text-[10px] uppercase font-bold text-gray-500 tracking-wider">
             <span className={step === 1 ? 'text-gold' : step > 1 ? 'text-gold/60' : ''}>1. Serviço</span>
             <span className={step === 2 ? 'text-gold' : step > 2 ? 'text-gold/60' : ''}>2. Profissional</span>
             <span className={step === 3 ? 'text-gold' : step > 3 ? 'text-gold/60' : ''}>3. Horário</span>
@@ -276,7 +276,7 @@ export default function BookingModal({
         )}
 
         {/* Dynamic Step Content */}
-        <div className="p-6 max-h-[70vh] overflow-y-auto bg-luxury-black/95">
+        <div className="p-6 max-h-[70vh] overflow-y-auto bg-[#FFFDFB]">
           <AnimatePresence mode="wait">
             
             {/* STEP 1: SELECT SERVICE */}
@@ -287,7 +287,7 @@ export default function BookingModal({
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -12 }}
                 transition={{ duration: 0.25, ease: "easeOut" }}
-                className="space-y-6"
+                className="space-y-6 animate-fade-in"
               >
                 <div className="flex flex-col sm:flex-row gap-4 items-center justify-between">
                   <div className="relative w-full sm:w-72">
@@ -296,9 +296,9 @@ export default function BookingModal({
                       placeholder="Pesquisar serviço..."
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
-                      className="w-full h-10 pl-9 pr-4 bg-luxury-dark/60 border border-gold/20 rounded-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:border-gold transition-colors"
+                      className="w-full h-10 pl-9 pr-4 bg-[#FFF8F2] border border-gold/25 rounded-lg text-sm text-[#2E1B13] placeholder-gray-500 focus:outline-none focus:border-gold transition-colors"
                     />
-                    <Search size={16} className="absolute left-3 top-3 text-gray-500" />
+                    <Search size={16} className="absolute left-3 top-3 text-gold/60" />
                   </div>
 
                   <div className="flex gap-1 overflow-x-auto w-full sm:w-auto py-1 no-scrollbar">
@@ -306,10 +306,10 @@ export default function BookingModal({
                       <button
                         key={cat.id}
                         onClick={() => setSelectedCategoryFilter(cat.id)}
-                        className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors ${
+                        className={`px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap transition-colors ${
                           selectedCategoryFilter === cat.id 
-                            ? 'bg-gold text-black' 
-                            : 'bg-luxury-dark text-gray-400 hover:text-white'
+                            ? 'bg-gold text-[#FFFDFB]' 
+                            : 'bg-[#F4EDE4] text-[#5C3D30] hover:text-[#2E1B13]'
                         }`}
                       >
                         {cat.name}
@@ -323,24 +323,24 @@ export default function BookingModal({
                     <div 
                       key={service.id}
                       onClick={() => setSelectedService(service)}
-                      className={`p-4 rounded-xl border transition-all duration-200 cursor-pointer flex justify-between items-center backdrop-blur-md ${
+                      className={`p-4 rounded-xl border transition-all duration-200 cursor-pointer flex justify-between items-center ${
                         selectedService?.id === service.id
-                          ? 'border-gold bg-gold/10 shadow-lg shadow-gold/10 scale-[1.01]'
-                          : 'border-gold/10 hover:border-gold/35 bg-white/[0.02] hover:bg-white/[0.07]'
+                          ? 'border-gold bg-gold/10 shadow-lg shadow-gold/5 scale-[1.01]'
+                          : 'border-gold/15 hover:border-gold/35 bg-[#FFF8F2]/60 hover:bg-[#F4EDE4]/60'
                       }`}
                     >
                       <div>
                         <div className="flex items-center gap-2">
-                          <h4 className="font-serif text-white font-medium">{service.name}</h4>
-                          <span className="text-[10px] text-gray-500 font-semibold uppercase">{service.category}</span>
+                          <h4 className="font-serif text-[#2E1B13] font-bold">{service.name}</h4>
+                          <span className="text-[10px] text-[#A98D7C] font-semibold uppercase">{service.category}</span>
                         </div>
-                        <p className="text-gray-400 text-xs mt-1 max-w-md line-clamp-1">{service.description}</p>
-                        <span className="text-[10px] text-gold/80 bg-gold/5 border border-gold/10 px-2 py-0.5 rounded mt-2 inline-block">
+                        <p className="text-[#5C3D30] text-xs mt-1 max-w-md line-clamp-1">{service.description}</p>
+                        <span className="text-[10px] text-gold/90 bg-gold/5 border border-gold/10 px-2 py-0.5 rounded mt-2 inline-block font-semibold">
                           🕒 {service.duration} min
                         </span>
                       </div>
                       <div className="text-right">
-                        <div className="text-gold font-serif text-sm font-semibold">
+                        <div className="text-gold font-serif text-sm font-bold">
                           {service.variablePrice ? 'A partir de' : ''} R$ {service.priceBase},00
                         </div>
                         {selectedService?.id === service.id && (
@@ -350,7 +350,7 @@ export default function BookingModal({
                     </div>
                   ))}
                   {filteredServices.length === 0 && (
-                    <div className="text-center py-12 text-gray-500 text-sm">
+                    <div className="text-center py-12 text-[#5C3D30] text-sm">
                       Nenhum serviço encontrado para sua busca.
                     </div>
                   )}
@@ -370,7 +370,7 @@ export default function BookingModal({
               >
                 <div className="text-center mb-4">
                   <h4 className="text-sm uppercase tracking-wider text-gold font-semibold mb-1">Quem realizará o atendimento?</h4>
-                  <p className="text-xs text-gray-400">Serviço selecionado: <strong className="text-white">{selectedService?.name}</strong></p>
+                  <p className="text-xs text-[#5C3D30]">Serviço selecionado: <strong className="text-[#2E1B13]">{selectedService?.name}</strong></p>
                 </div>
 
                 {/* Option: First Available */}
@@ -379,19 +379,19 @@ export default function BookingModal({
                     setSelectedProfessional(null);
                     setIsFirstAvailable(true);
                   }}
-                  className={`p-4 rounded-xl border transition-all duration-200 cursor-pointer flex justify-between items-center backdrop-blur-md ${
+                  className={`p-4 rounded-xl border transition-all duration-200 cursor-pointer flex justify-between items-center ${
                     isFirstAvailable 
-                      ? 'border-gold bg-gold/10 shadow-lg shadow-gold/10 scale-[1.01]' 
-                      : 'border-gold/10 hover:border-gold/35 bg-white/[0.02] hover:bg-white/[0.07]'
+                      ? 'border-gold bg-gold/10 shadow-lg shadow-gold/5 scale-[1.01]' 
+                      : 'border-gold/15 hover:border-gold/35 bg-[#FFF8F2]/60 hover:bg-[#F4EDE4]/60'
                   }`}
                 >
                   <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 rounded-full bg-gold/10 border border-gold/30 flex items-center justify-center text-gold">
+                    <div className="w-12 h-12 rounded-full bg-gold/15 border border-gold/35 flex items-center justify-center text-gold">
                       <Sparkles size={20} />
                     </div>
                     <div>
-                      <h4 className="font-serif text-white font-medium">Primeira Profissional Disponível</h4>
-                      <p className="text-gray-400 text-xs mt-0.5">Encontre o horário mais próximo disponível</p>
+                      <h4 className="font-serif text-[#2E1B13] font-bold">Primeira Profissional Disponível</h4>
+                      <p className="text-[#5C3D30] text-xs mt-0.5">Encontre o horário mais próximo disponível</p>
                     </div>
                   </div>
                   {isFirstAvailable && <Check className="text-gold" size={20} />}
@@ -406,28 +406,28 @@ export default function BookingModal({
                         setSelectedProfessional(pro);
                         setIsFirstAvailable(false);
                       }}
-                      className={`p-4 rounded-xl border transition-all duration-200 cursor-pointer flex flex-col justify-between backdrop-blur-md ${
+                      className={`p-4 rounded-xl border transition-all duration-200 cursor-pointer flex flex-col justify-between ${
                         selectedProfessional?.id === pro.id && !isFirstAvailable
-                          ? 'border-gold bg-gold/10 shadow-lg shadow-gold/10 scale-[1.01]'
-                          : 'border-gold/10 hover:border-gold/35 bg-white/[0.02] hover:bg-white/[0.07]'
+                          ? 'border-gold bg-gold/10 shadow-lg shadow-gold/5 scale-[1.01]'
+                          : 'border-gold/15 hover:border-gold/35 bg-[#FFF8F2]/60 hover:bg-[#F4EDE4]/60'
                       }`}
                     >
                       <div className="flex items-center gap-3 mb-3">
-                        <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-gold/30 to-gold/5 border border-gold/20 flex items-center justify-center text-gold font-serif font-bold text-lg">
+                        <div className="w-10 h-10 rounded-full bg-gold/15 border border-gold/30 flex items-center justify-center text-gold font-serif font-bold text-lg">
                           {pro.name[0]}
                         </div>
                         <div>
-                          <h4 className="font-serif text-white font-medium">{pro.name}</h4>
-                          <span className="text-[10px] text-gray-500 uppercase font-semibold">{pro.role.split(',')[0]}</span>
+                          <h4 className="font-serif text-[#2E1B13] font-bold">{pro.name}</h4>
+                          <span className="text-[10px] text-[#A98D7C] uppercase font-semibold">{pro.role.split(',')[0]}</span>
                         </div>
                       </div>
-                      <p className="text-gray-400 text-xs line-clamp-2 leading-relaxed mb-4">
+                      <p className="text-[#5C3D30] text-xs line-clamp-2 leading-relaxed mb-4">
                         "{pro.bio}"
                       </p>
-                      <div className="flex justify-between items-center pt-2 border-t border-white/5">
+                      <div className="flex justify-between items-center pt-2 border-t border-gold/15">
                         <div className="flex gap-1">
                           {pro.specialties.slice(0, 2).map((s, i) => (
-                            <span key={i} className="text-[9px] px-2 py-0.5 bg-white/5 text-gray-300 rounded font-medium">
+                            <span key={i} className="text-[9px] px-2 py-0.5 bg-[#F4EDE4] text-[#5C3D30] rounded font-semibold">
                               {s}
                             </span>
                           ))}
@@ -454,14 +454,14 @@ export default function BookingModal({
               >
                 <div className="text-center mb-2">
                   <h4 className="text-sm uppercase tracking-wider text-gold font-semibold mb-1">Escolha a data e o horário</h4>
-                  <p className="text-xs text-gray-400">
-                    Profissional: <strong className="text-white">{isFirstAvailable ? 'Primeira disponível' : selectedProfessional?.name}</strong>
+                  <p className="text-xs text-[#5C3D30]">
+                    Profissional: <strong className="text-[#2E1B13]">{isFirstAvailable ? 'Primeira disponível' : selectedProfessional?.name}</strong>
                   </p>
                 </div>
 
                 {/* Day selector carousel */}
                 <div className="space-y-2">
-                  <span className="text-xs text-gray-400 uppercase tracking-wider font-semibold">Escolha o dia:</span>
+                  <span className="text-xs text-[#5C3D30] uppercase tracking-wider font-semibold">Escolha o dia:</span>
                   <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-thin">
                     {calendarDays.map((date) => {
                       const dateString = date.toISOString().split('T')[0];
@@ -477,10 +477,10 @@ export default function BookingModal({
                             setSelectedDate(dateString);
                             setSelectedTime(''); // Reset hour selection
                           }}
-                          className={`flex flex-col items-center justify-center p-3 rounded-xl border min-w-[72px] transition-all duration-200 backdrop-blur-sm ${
+                          className={`flex flex-col items-center justify-center p-3 rounded-xl border min-w-[72px] transition-all duration-200 ${
                             isSelected 
-                              ? 'bg-gold-gradient text-black border-gold shadow-lg shadow-gold/15 scale-[1.03]' 
-                              : 'bg-white/[0.02] hover:bg-white/[0.07] text-gray-400 hover:text-white border-gold/10 hover:border-gold/30'
+                              ? 'bg-gold-gradient text-white border-gold shadow-lg shadow-gold/15 scale-[1.03]' 
+                              : 'bg-[#FFF8F2]/60 hover:bg-[#F4EDE4]/60 text-[#5C3D30] hover:text-[#2E1B13] border-gold/15 hover:border-gold/30'
                           }`}
                         >
                           <span className="text-[10px] uppercase font-bold tracking-wider">{dayName.replace('.', '')}</span>
@@ -496,7 +496,7 @@ export default function BookingModal({
                 {selectedDate && (
                   <div className="space-y-3">
                     <div className="flex justify-between items-center">
-                      <span className="text-xs text-gray-400 uppercase tracking-wider font-semibold">Horários disponíveis:</span>
+                      <span className="text-xs text-[#5C3D30] uppercase tracking-wider font-semibold">Horários disponíveis:</span>
                       <span className="text-[10px] text-gold">{formatDateLabel(selectedDate)}</span>
                     </div>
 
@@ -508,10 +508,10 @@ export default function BookingModal({
                             <button
                               key={time}
                               onClick={() => setSelectedTime(time)}
-                              className={`h-11 rounded-lg border text-sm font-semibold transition-all duration-200 backdrop-blur-sm ${
+                              className={`h-11 rounded-lg border text-sm font-semibold transition-all duration-200 ${
                                 isSelected 
-                                  ? 'bg-gold-gradient text-black border-gold shadow-lg shadow-gold/15 scale-[1.03]' 
-                                  : 'bg-white/[0.02] hover:bg-white/[0.07] text-gray-300 border-gold/10 hover:border-gold/30'
+                                  ? 'bg-gold-gradient text-white border-gold shadow-lg shadow-gold/15 scale-[1.03]' 
+                                  : 'bg-[#FFF8F2]/60 hover:bg-[#F4EDE4]/60 text-[#5C3D30] hover:text-[#2E1B13] border-gold/15 hover:border-gold/30'
                               }`}
                             >
                               {time}
@@ -540,13 +540,13 @@ export default function BookingModal({
               >
                 <div className="text-center mb-6">
                   <h4 className="text-sm uppercase tracking-wider text-gold font-semibold mb-1">Confirme seus dados para finalizar</h4>
-                  <p className="text-xs text-gray-400">Resumo: <strong className="text-white">{selectedService?.name}</strong> em <strong className="text-white">{formatDateLabel(selectedDate)}</strong> às <strong className="text-white">{selectedTime}h</strong></p>
+                  <p className="text-xs text-[#5C3D30]">Resumo: <strong className="text-[#2E1B13]">{selectedService?.name}</strong> em <strong className="text-[#2E1B13]">{formatDateLabel(selectedDate)}</strong> às <strong className="text-[#2E1B13]">{selectedTime}h</strong></p>
                 </div>
 
                 <form onSubmit={handleSubmit} className="space-y-4">
                   {/* Name Input */}
                   <div>
-                    <label className="block text-xs uppercase tracking-wider text-gray-400 font-semibold mb-1">Seu Nome Completo *</label>
+                    <label className="block text-xs uppercase tracking-wider text-[#5C3D30] font-semibold mb-1">Seu Nome Completo *</label>
                     <div className="relative">
                       <input 
                         type="text" 
@@ -554,15 +554,15 @@ export default function BookingModal({
                         value={clientName}
                         onChange={(e) => setClientName(e.target.value)}
                         placeholder="Ex: Maria Oliveira"
-                        className="w-full h-11 pl-10 pr-4 bg-luxury-dark/60 border border-gold/20 rounded-xl text-sm text-white focus:outline-none focus:border-gold transition-colors"
+                        className="w-full h-11 pl-10 pr-4 bg-[#FFF8F2] border border-gold/25 focus:border-gold focus:bg-[#FFFDFB] rounded-xl text-sm text-[#2E1B13] focus:outline-none transition-colors"
                       />
-                      <User size={16} className="absolute left-3.5 top-3.5 text-gray-500" />
+                      <User size={16} className="absolute left-3.5 top-3.5 text-gold/60" />
                     </div>
                   </div>
 
                   {/* WhatsApp Input */}
                   <div>
-                    <label className="block text-xs uppercase tracking-wider text-gray-400 font-semibold mb-1">WhatsApp para Lembretes *</label>
+                    <label className="block text-xs uppercase tracking-wider text-[#5C3D30] font-semibold mb-1">WhatsApp para Lembretes *</label>
                     <div className="relative">
                       <input 
                         type="tel" 
@@ -570,40 +570,40 @@ export default function BookingModal({
                         value={clientPhone}
                         onChange={(e) => setClientPhone(e.target.value)}
                         placeholder="Ex: (38) 99100-7706"
-                        className="w-full h-11 pl-10 pr-4 bg-luxury-dark/60 border border-gold/20 rounded-xl text-sm text-white focus:outline-none focus:border-gold transition-colors"
+                        className="w-full h-11 pl-10 pr-4 bg-[#FFF8F2] border border-gold/25 focus:border-gold focus:bg-[#FFFDFB] rounded-xl text-sm text-[#2E1B13] focus:outline-none transition-colors"
                       />
-                      <Phone size={16} className="absolute left-3.5 top-3.5 text-gray-500" />
+                      <Phone size={16} className="absolute left-3.5 top-3.5 text-gold/60" />
                     </div>
-                    <span className="text-[10px] text-gray-500 mt-1 block">Enviaremos lembretes automáticos de confirmação 24h antes do serviço.</span>
+                    <span className="text-[10px] text-gray-500 mt-1.5 block">Enviaremos lembretes automáticos de confirmação 24h antes do serviço.</span>
                   </div>
 
                   {/* Email Input */}
                   <div>
-                    <label className="block text-xs uppercase tracking-wider text-gray-400 font-semibold mb-1">E-mail (Opcional)</label>
+                    <label className="block text-xs uppercase tracking-wider text-[#5C3D30] font-semibold mb-1">E-mail (Opcional)</label>
                     <div className="relative">
                       <input 
                         type="email" 
                         value={clientEmail}
                         onChange={(e) => setClientEmail(e.target.value)}
                         placeholder="Ex: maria@exemplo.com"
-                        className="w-full h-11 pl-10 pr-4 bg-luxury-dark/60 border border-gold/20 rounded-xl text-sm text-white focus:outline-none focus:border-gold transition-colors"
+                        className="w-full h-11 pl-10 pr-4 bg-[#FFF8F2] border border-gold/25 focus:border-gold focus:bg-[#FFFDFB] rounded-xl text-sm text-[#2E1B13] focus:outline-none transition-colors"
                       />
-                      <Mail size={16} className="absolute left-3.5 top-3.5 text-gray-500" />
+                      <Mail size={16} className="absolute left-3.5 top-3.5 text-gold/60" />
                     </div>
                   </div>
 
                   {/* Notes / Special Instructions */}
                   <div>
-                    <label className="block text-xs uppercase tracking-wider text-gray-400 font-semibold mb-1">Observações Importantes</label>
+                    <label className="block text-xs uppercase tracking-wider text-[#5C3D30] font-semibold mb-1">Observações Importantes</label>
                     <div className="relative">
                       <textarea 
                         value={clientNotes}
                         onChange={(e) => setClientNotes(e.target.value)}
                         placeholder="Comprimento do cabelo, químicas anteriores, sensibilidades capilares, ou observações..."
                         rows={3}
-                        className="w-full p-3.5 pl-10 bg-luxury-dark/60 border border-gold/20 rounded-xl text-sm text-white focus:outline-none focus:border-gold transition-colors resize-none"
+                        className="w-full p-3.5 pl-10 bg-[#FFF8F2] border border-gold/25 focus:border-gold focus:bg-[#FFFDFB] rounded-xl text-sm text-[#2E1B13] focus:outline-none transition-colors resize-none"
                       />
-                      <MessageSquare size={16} className="absolute left-3.5 top-3.5 text-gray-500" />
+                      <MessageSquare size={16} className="absolute left-3.5 top-3.5 text-gold/60" />
                     </div>
                   </div>
 
@@ -631,48 +631,48 @@ export default function BookingModal({
                 </div>
 
                 <div className="space-y-2">
-                  <h3 className="text-2xl font-serif text-white tracking-wide">Agendamento Realizado!</h3>
-                  <p className="text-sm text-gold">Seu horário foi reservado com sucesso no salão.</p>
+                  <h3 className="text-2xl font-serif text-[#2E1B13] tracking-wide font-bold">Agendamento Realizado!</h3>
+                  <p className="text-sm text-gold font-semibold">Seu horário foi reservado com sucesso no salão.</p>
                 </div>
 
                 {/* Receipt ticket summary */}
-                <div className="glass-panel p-5 rounded-xl max-w-sm mx-auto text-left space-y-3.5 border-dashed relative">
+                <div className="bg-[#FFF8F2] p-5 rounded-xl max-w-sm mx-auto text-left space-y-3.5 border border-dashed border-gold/25 relative shadow-sm">
                   {/* Decorative ticket notch left */}
-                  <div className="absolute w-4 h-8 bg-luxury-black border-r border-gold/15 rounded-r-full -left-1.5 top-1/2 -translate-y-1/2" />
+                  <div className="absolute w-4 h-8 bg-[#FFFDFB] border-r border-gold/25 rounded-r-full -left-1.5 top-1/2 -translate-y-1/2" />
                   {/* Decorative ticket notch right */}
-                  <div className="absolute w-4 h-8 bg-luxury-black border-l border-gold/15 rounded-l-full -right-1.5 top-1/2 -translate-y-1/2" />
+                  <div className="absolute w-4 h-8 bg-[#FFFDFB] border-l border-gold/25 rounded-l-full -right-1.5 top-1/2 -translate-y-1/2" />
 
-                  <div className="flex justify-between items-center pb-2 border-b border-white/5">
+                  <div className="flex justify-between items-center pb-2 border-b border-gold/15">
                     <span className="text-[10px] text-gray-500 uppercase tracking-widest font-semibold">Cuidare Recibo</span>
                     <span className="text-[10px] text-gold font-bold uppercase">Confirmado</span>
                   </div>
 
-                  <div className="text-xs space-y-2 text-gray-300">
+                  <div className="text-xs space-y-2 text-[#5C3D30]">
                     <div>
                       <span className="text-gray-500 block text-[9px] uppercase font-bold">Cliente:</span>
-                      <span className="font-semibold text-white">{clientName}</span>
+                      <span className="font-semibold text-[#2E1B13]">{clientName}</span>
                     </div>
                     <div>
                       <span className="text-gray-500 block text-[9px] uppercase font-bold">Serviço:</span>
-                      <span className="font-semibold text-white">{selectedService?.name}</span>
+                      <span className="font-semibold text-[#2E1B13]">{selectedService?.name}</span>
                     </div>
                     <div>
                       <span className="text-gray-500 block text-[9px] uppercase font-bold">Profissional Habilitada:</span>
-                      <span className="font-semibold text-white">{determineProfessional().name}</span>
+                      <span className="font-semibold text-[#2E1B13]">{determineProfessional().name}</span>
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                       <div>
                         <span className="text-gray-500 block text-[9px] uppercase font-bold">Data:</span>
-                        <span className="font-semibold text-white">{formatDateLabel(selectedDate).split('-')[0]}</span>
+                        <span className="font-semibold text-[#2E1B13]">{formatDateLabel(selectedDate).split('-')[0]}</span>
                       </div>
                       <div>
                         <span className="text-gray-500 block text-[9px] uppercase font-bold">Horário:</span>
-                        <span className="font-semibold text-white">{selectedTime}h</span>
+                        <span className="font-semibold text-[#2E1B13]">{selectedTime}h</span>
                       </div>
                     </div>
                     <div>
                       <span className="text-gray-500 block text-[9px] uppercase font-bold">Endereço Cuidare:</span>
-                      <span className="text-gray-400 font-light flex items-center gap-1">
+                      <span className="text-[#5C3D30] font-light flex items-center gap-1">
                         <MapPin size={10} className="text-gold" /> Rua Paracatu, 15, Centro, Taiobeiras
                       </span>
                     </div>
@@ -680,7 +680,7 @@ export default function BookingModal({
                 </div>
 
                 <div className="space-y-4">
-                  <p className="text-xs text-gray-400 max-w-sm mx-auto leading-relaxed">
+                  <p className="text-xs text-[#5C3D30] max-w-sm mx-auto leading-relaxed">
                     Você também receberá um lembrete automático 24h antes do seu atendimento. Clique no botão abaixo para enviar os detalhes no WhatsApp do salão e confirmar sua presença imediatamente.
                   </p>
                   <div className="flex flex-col gap-2 max-w-xs mx-auto">
@@ -688,7 +688,7 @@ export default function BookingModal({
                       href={getWhatsAppLink()}
                       target="_blank"
                       rel="noreferrer"
-                      className="w-full h-12 bg-[#25D366] hover:bg-[#20ba5a] text-black font-bold uppercase tracking-wider text-xs rounded-xl transition-colors flex items-center justify-center gap-2"
+                      className="w-full h-12 bg-[#25D366] hover:bg-[#20ba5a] text-[#FFFDFB] font-bold uppercase tracking-wider text-xs rounded-xl transition-colors flex items-center justify-center gap-2 shadow-md hover:shadow-lg"
                     >
                       <Phone size={16} /> Confirmar no WhatsApp
                     </a>
@@ -719,14 +719,14 @@ export default function BookingModal({
 
         {/* Footer controls (for steps 1-4) */}
         {step < 5 && (
-          <div className="px-6 py-4 border-t border-gold/10 bg-luxury-dark/90 flex justify-between items-center">
+          <div className="px-6 py-4 border-t border-gold/15 bg-[#F4EDE4] flex justify-between items-center">
             <button
               onClick={handlePrevStep}
               disabled={step === 1 && !initialService}
               className={`flex items-center gap-2 text-xs font-semibold uppercase tracking-wider transition-colors ${
                 step === 1 && !initialService
                   ? 'text-gray-600 cursor-not-allowed'
-                  : 'text-gray-400 hover:text-gold'
+                  : 'text-gray-500 hover:text-gold'
               }`}
             >
               <ArrowLeft size={14} /> Voltar
@@ -744,7 +744,7 @@ export default function BookingModal({
                   (step === 1 && !selectedService) ||
                   (step === 2 && !selectedProfessional && !isFirstAvailable) ||
                   (step === 3 && (!selectedDate || !selectedTime))
-                    ? 'bg-gray-800 text-gray-500 cursor-not-allowed border border-white/5'
+                    ? 'bg-gold/20 text-gold/50 cursor-not-allowed border border-gold/10'
                     : 'bg-gold text-white hover:bg-gold-light'
                 }`}
               >
