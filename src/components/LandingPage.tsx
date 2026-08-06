@@ -195,7 +195,7 @@ export default function LandingPage({ onOpenBooking, onNavigateToAdmin }: Landin
 
           {/* On mobile/tablet, render the image here in the flow below the text */}
           <div className="lg:hidden w-full flex justify-center mt-8">
-            <div className="relative w-full max-w-[500px] h-[350px] sm:h-[480px] overflow-hidden flex items-end justify-center">
+            <div className="relative w-full max-w-[560px] h-[440px] sm:h-[560px] overflow-hidden flex items-end justify-center">
               <img 
                 src="/PROFISSIONAIS.png" 
                 alt="Profissionais Cuidare" 
