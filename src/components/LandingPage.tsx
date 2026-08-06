@@ -136,56 +136,112 @@ export default function LandingPage({ onOpenBooking, onNavigateToAdmin }: Landin
 
       {/* HERO SECTION */}
       <section 
-        className="relative min-h-[85vh] flex items-center justify-center text-center px-4 overflow-hidden bg-cover bg-center" 
-        style={{ backgroundImage: "url('/BACKGROUND HERO.png')" }}
+        className="relative min-h-[90vh] lg:min-h-screen flex items-center justify-center px-4 sm:px-6 lg:px-8 overflow-hidden py-16 md:py-24"
       >
+        {/* Background image of the hero (faded/blurred) */}
+        <div 
+          className="absolute inset-0 bg-cover bg-center opacity-30 mix-blend-overlay pointer-events-none" 
+          style={{ backgroundImage: "url('/BACKGROUND HERO.png')" }}
+        />
         {/* Smoky blur and gradient overlay */}
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-luxury-black via-background to-background pointer-events-none z-[1] opacity-75" />
-        <div className="absolute inset-0 bg-black/65 backdrop-blur-[1.5px] z-[1] pointer-events-none" />
-        {/* Solid bottom gradient to fade the light wall/fence of the photo into the background */}
-        <div className="absolute bottom-0 left-0 right-0 h-40 bg-gradient-to-t from-background via-background/95 to-transparent z-[2] pointer-events-none" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-luxury-black via-background to-background pointer-events-none z-[1] opacity-80" />
+        <div className="absolute inset-0 bg-black/50 backdrop-blur-[1px] z-[1] pointer-events-none" />
+        {/* Solid bottom gradient to fade the layout into the background */}
+        <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-background via-background/95 to-transparent z-[2] pointer-events-none" />
 
         {/* Subtle grid pattern background */}
         <div className="absolute inset-0 bg-[linear-gradient(rgba(212,175,55,0.01)_1px,_transparent_1px),_linear-gradient(90deg,_rgba(212,175,55,0.01)_1px,_transparent_1px)] bg-[size:60px_60px] pointer-events-none z-[1]" />
 
-        <div className="max-w-4xl mx-auto z-10 relative">
-          <motion.h1
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1, duration: 0.45, ease: "easeOut" }}
-            className="text-4xl sm:text-6xl md:text-7xl font-serif text-white tracking-wide mb-6 leading-tight"
-          >
-            Beleza, cuidado e <br />
-            <span className="text-gold-gradient font-medium italic">praticidade</span> em um só lugar.
-          </motion.h1>
+        <div className="max-w-7xl mx-auto w-full z-10 relative grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-8 items-center">
+          
+          {/* LEFT COLUMN: Text Content */}
+          <div className="lg:col-span-7 flex flex-col items-start text-left space-y-6 md:space-y-8 max-w-2xl lg:max-w-none z-10 relative">
+            <motion.div
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.05, duration: 0.45, ease: "easeOut" }}
+              className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full glass-panel border border-gold/30 text-gold text-xs font-semibold uppercase tracking-widest animate-fade-in"
+            >
+              <Sparkles size={14} className="animate-pulse" /> Taiobeiras / MG
+            </motion.div>
 
-          <motion.p
-            initial={{ opacity: 0, y: 15 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2, duration: 0.45, ease: "easeOut" }}
-            className="text-lg sm:text-xl text-gray-300 max-w-2xl mx-auto mb-10 leading-relaxed font-sans font-light"
-          >
-            Escolha seu serviço, sua profissional preferida e faça seu agendamento online de forma rápida e segura.
-          </motion.p>
+            <motion.h1
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1, duration: 0.45, ease: "easeOut" }}
+              className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-serif text-white tracking-wide leading-[1.1] mb-2"
+            >
+              Beleza, cuidado e <br />
+              <span className="text-gold-gradient font-medium italic">praticidade</span> <br className="hidden sm:inline" />
+              em um só lugar.
+            </motion.h1>
 
+            <motion.p
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2, duration: 0.45, ease: "easeOut" }}
+              className="text-base sm:text-lg md:text-xl text-gray-300 leading-relaxed font-sans font-light max-w-xl"
+            >
+              Agende online de forma rápida e segura seu horário com nossas profissionais qualificadas. Escolha seu serviço e desfrute de um atendimento personalizado.
+            </motion.p>
+
+            <motion.div
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3, duration: 0.45, ease: "easeOut" }}
+              className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto pt-2"
+            >
+              <button
+                onClick={() => onOpenBooking()}
+                className="w-full sm:w-auto px-8 h-14 bg-gold-gradient text-black font-bold text-base rounded-xl hover:shadow-xl hover:shadow-gold/20 hover:scale-[1.02] active:scale-95 transition-all duration-300 flex items-center justify-center gap-3"
+              >
+                Agendar meu horário <ArrowRight size={18} />
+              </button>
+              <a
+                href="#servicos"
+                className="w-full sm:w-auto px-8 h-14 border border-gold/30 hover:border-gold hover:bg-gold/5 text-gold font-medium rounded-xl transition-all duration-300 flex items-center justify-center"
+              >
+                Conhecer os serviços
+              </a>
+            </motion.div>
+          </div>
+
+          {/* On mobile/tablet, render the image here in the flow below the text */}
+          <div className="lg:hidden w-full flex justify-center mt-8">
+            <div className="relative w-full max-w-[500px] h-[350px] sm:h-[480px] overflow-hidden flex items-end justify-center">
+              <img 
+                src="/PROFISSIONAIS.png" 
+                alt="Profissionais Cuidare" 
+                className="w-full h-auto object-contain object-bottom"
+              />
+              {/* Fade out the bottom of the image into the background */}
+              <div className="absolute bottom-0 left-0 right-0 h-1/3 bg-gradient-to-t from-background to-transparent pointer-events-none" />
+            </div>
+          </div>
+
+          {/* On desktop, leave the remaining 5 columns empty inside the grid flow */}
+          <div className="hidden lg:block lg:col-span-5 pointer-events-none" />
+        </div>
+
+        {/* RIGHT COLUMN: Image of Professionals (Absolutely positioned on desktop for edge bleeding and huge scale) */}
+        <div className="hidden lg:flex absolute lg:-right-16 bottom-0 h-[83%] w-full z-[3] items-end justify-end pointer-events-none">
+          {/* Elegant glowing background sphere behind the image */}
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-gold/10 rounded-full blur-[120px] pointer-events-none" />
+          
           <motion.div
-            initial={{ opacity: 0, y: 15 }}
+            initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3, duration: 0.45, ease: "easeOut" }}
-            className="flex flex-col sm:flex-row gap-4 justify-center items-center"
+            transition={{ delay: 0.35, duration: 0.6, ease: "easeOut" }}
+            className="relative h-full flex items-end justify-end"
           >
-            <button
-              onClick={() => onOpenBooking()}
-              className="w-full sm:w-auto px-8 h-14 bg-gold-gradient text-black font-bold text-base rounded-xl hover:shadow-xl hover:shadow-gold/20 hover:scale-105 active:scale-95 transition-all duration-300 flex items-center justify-center gap-3"
-            >
-              Agendar meu horário <ArrowRight size={18} />
-            </button>
-            <a
-              href="#servicos"
-              className="w-full sm:w-auto px-8 h-14 border border-gold/40 hover:border-gold hover:bg-gold/5 text-gold font-medium rounded-xl transition-all duration-300 flex items-center justify-center"
-            >
-              Conhecer os serviços
-            </a>
+            <img 
+              src="/PROFISSIONAIS.png" 
+              alt="Profissionais Cuidare" 
+              className="h-full w-auto max-w-none object-contain object-bottom object-right group-hover:scale-[1.02] transition-transform duration-700 ease-out"
+            />
+            
+            {/* Overlay with soft gradient at the bottom to fade it nicely */}
+            <div className="absolute bottom-0 left-0 right-0 h-1/3 bg-gradient-to-t from-background via-background/90 to-transparent pointer-events-none" />
           </motion.div>
         </div>
       </section>
