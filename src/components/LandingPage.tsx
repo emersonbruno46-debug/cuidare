@@ -206,13 +206,13 @@ export default function LandingPage({ onOpenBooking, onNavigateToAdmin }: Landin
           </div>
 
           {/* HUMAN VISUAL - Liberado das colunas para maior escala */}
-          <div className="lg:absolute lg:bottom-0 lg:right-[-2%] lg:h-[90%] xl:h-[95%] lg:w-[60%] flex items-end justify-center lg:justify-end mt-12 lg:mt-0 relative h-[450px] w-full z-0 pointer-events-none">
+          <div className="lg:absolute lg:bottom-0 lg:right-[-2%] lg:h-[75%] xl:h-[80%] lg:w-[55%] flex items-end justify-center lg:justify-end mt-12 lg:mt-0 relative h-[450px] w-full z-0 pointer-events-none">
             <div className="relative h-full w-full flex items-end justify-center lg:justify-end hero-prof">
               <img 
                 src="/PROFISSIONAIS.png" 
                 alt="Profissionais Cuidare" 
                 className="h-full w-auto max-w-none object-contain object-bottom origin-bottom mix-blend-multiply" 
-                style={{ objectPosition: 'center bottom' }}
+                style={{ objectPosition: 'right bottom' }}
               />
             </div>
           </div>
