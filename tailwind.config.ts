@@ -15,46 +15,48 @@ export default {
     extend: {
       fontFamily: {
         serif: ['"Cormorant Garamond"', 'Georgia', 'serif'],
-        sans: ['"Manrope"', 'sans-serif'],
+        sans: ['"Manrope"', 'Inter', 'sans-serif'],
       },
       colors: {
-        border: "rgba(169, 141, 124, 0.2)",
-        input: "rgba(169, 141, 124, 0.1)",
-        ring: "#C8A45D",
-        background: "#FFF8F2",
-        foreground: "#2E1B13",
-        white: "#2E1B13", // Map white to dark brown
-        black: "#FFF8F2", // Map black to cream
-        gold: {
-          light: "#EDD9A3",
-          DEFAULT: "#C8A45D",
-          dark: "#D9B87A",
-          deep: "#4B342B",
-          muted: "rgba(200, 164, 93, 0.15)",
+        canvas: "#F7F4EF",
+        paper: "#FCFAF7",
+        surface: "#FFFFFF",
+        "warm-surface": "#F2ECE5",
+        sand: "#DED1C2",
+        champagne: "#C6A25F",
+        "gold-muted": "#B68D46",
+        taupe: "#786A61",
+        espresso: "#251B17",
+        "deep-espresso": "#191310",
+        "text-primary": "#251B17",
+        "text-secondary": "#766C65",
+        "border-subtle": "rgba(37,27,23,0.10)",
+        "border-strong": "rgba(37,27,23,0.16)",
+        success: "#27896F",
+        warning: "#C5963D",
+        danger: "#D85D5D",
+        // Dashboard specific tokens
+        dashboard: {
+          canvas: "#F7F5F1",
+          sidebar: "#FCFBF9",
+          surface: "#FFFFFF",
+          "surface-alt": "#FBF8F4",
+          border: "rgba(37,27,23,0.09)",
+          text: "#29231F",
+          muted: "#7C736D",
+          brand: "#C29B4D",
+          "brand-light": "#F5ECD8",
         },
-        luxury: {
-          black: "#2E1B13",  // Gizelly primary text
-          dark: "#F4EDE4",   // light background card
-          gray: "#5C3D30",   // Gizelly body text
-          light: "#FFF8F2",  // cream background
-        },
-        gray: {
-          50: "#FFFDFB",
-          100: "#FAF4EE",
-          200: "#F4EDE4", // light warm cream
-          300: "#5C3D30", // Gizelly body text (brown)
-          400: "#8A6658",
-          500: "#9A7968", // Gizelly muted
-          600: "#A98D7C",
-          700: "#4B342B",
-          800: "#3A2820",
-          900: "#2E1B13",
-        }
+        border: "rgba(37,27,23,0.10)",
+        input: "rgba(37,27,23,0.10)",
+        ring: "#C6A25F",
+        background: "#F7F4EF",
+        foreground: "#251B17",
       },
       borderRadius: {
-        lg: "12px",
-        md: "8px",
-        sm: "4px",
+        lg: "16px",
+        md: "12px",
+        sm: "8px",
       },
       keyframes: {
         "fade-in": {
@@ -69,16 +71,11 @@ export default {
           from: { transform: "translateY(100%)" },
           to: { transform: "translateY(0)" },
         },
-        "gold-glow": {
-          "0%, 100%": { boxShadow: "0 0 5px rgba(212, 175, 55, 0.2)" },
-          "50%": { boxShadow: "0 0 20px rgba(212, 175, 55, 0.6)" },
-        }
       },
       animation: {
         "fade-in": "fade-in 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards",
         "fade-out": "fade-out 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards",
         "slide-up": "slide-up 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards",
-        "gold-glow": "gold-glow 3s infinite ease-in-out",
       },
     },
   },

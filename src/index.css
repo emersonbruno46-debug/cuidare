@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700;800&family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Manrope:wght@300;400;500;600;700;800&family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -11,19 +11,11 @@
   }
 
   body {
-    @apply bg-background text-foreground font-sans antialiased overflow-x-hidden;
-    background-color: #FFF8F2;
-    background-image: 
-      radial-gradient(circle at 15% 15%, rgba(232, 208, 196, 0.4) 0%, transparent 50%),
-      radial-gradient(circle at 85% 75%, rgba(244, 237, 228, 0.5) 0%, transparent 50%),
-      radial-gradient(circle at 50% 45%, rgba(255, 249, 243, 0.6) 0%, transparent 65%),
-      radial-gradient(circle at 75% 20%, rgba(200, 164, 93, 0.12) 0%, transparent 40%),
-      radial-gradient(circle at 20% 80%, rgba(200, 164, 93, 0.08) 0%, transparent 40%);
-    background-attachment: fixed;
+    @apply bg-canvas text-text-primary font-sans antialiased overflow-x-hidden;
   }
 
   h1, h2, h3, h4, h5, h6 {
-    @apply font-serif tracking-wide text-white; /* Remember white is mapped to #2E1B13 (dark brown) */
+    @apply font-serif tracking-tight text-espresso;
     font-variant-numeric: lining-nums;
     font-feature-settings: "lnum" 1;
   }
@@ -34,68 +26,51 @@
   font-feature-settings: "lnum" 1;
 }
 
-/* Custom Luxury Scrollbar */
+/* Custom Scrollbar */
 ::-webkit-scrollbar {
   width: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: #FFF8F2;
+  background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: #EAE0D4;
+  background: #DED1C2; /* sand */
   border-radius: 10px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #C8A45D;
+  background: #B68D46; /* gold-muted */
 }
 
-/* Luxury Glassmorphism */
+/* Luxury Glassmorphism - Refined */
 .glass-panel {
-  background: rgba(255, 248, 242, 0.55);
-  backdrop-filter: blur(24px);
-  -webkit-backdrop-filter: blur(24px);
-  border: 1px solid rgba(169, 141, 124, 0.25);
-  box-shadow: 0 8px 32px rgba(75, 52, 43, 0.06);
+  background: rgba(252, 250, 247, 0.78); /* paper with opacity */
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(37, 27, 23, 0.10); /* border-subtle */
+  box-shadow: 0 4px 24px rgba(37, 27, 23, 0.04);
 }
 
 .glass-panel-hover {
   @apply transition-all duration-300;
 }
 .glass-panel-hover:hover {
-  background: rgba(244, 237, 228, 0.75);
-  border-color: rgba(200, 164, 93, 0.45);
-  box-shadow: 0 20px 40px -10px rgba(75, 52, 43, 0.12), 0 0 20px rgba(200, 164, 93, 0.05);
+  background: rgba(255, 255, 255, 0.9);
+  border-color: rgba(37, 27, 23, 0.16);
+  box-shadow: 0 12px 32px rgba(37, 27, 23, 0.08);
 }
 
 .glass-button {
   background: rgba(255, 255, 255, 0.6);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
-  border: 1px solid rgba(200, 164, 93, 0.3);
-  color: #5C3D30;
+  border: 1px solid rgba(37, 27, 23, 0.10);
+  color: #251B17;
   @apply transition-all duration-300;
 }
 .glass-button:hover {
-  background: rgba(200, 164, 93, 0.15);
-  border-color: #C8A45D;
-  color: #2E1B13;
-  box-shadow: 0 0 15px rgba(200, 164, 93, 0.10);
-}
-
-
-/* Gold Gradient Text */
-.text-gold-gradient {
-  background: linear-gradient(135deg, #EDD9A3 0%, #C8A45D 50%, #A98D7C 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-}
-
-.bg-gold-gradient {
-  background: linear-gradient(135deg, #EDD9A3 0%, #C8A45D 50%, #A98D7C 100%);
-}
-
-.border-gold-gradient {
-  border-image: linear-gradient(135deg, #EDD9A3, #C8A45D, #A98D7C) 1;
+  background: #C6A25F;
+  border-color: #C6A25F;
+  color: #FFFFFF;
 }
 
 /* Page Transitions */
