@@ -18,18 +18,29 @@ export default {
         sans: ['"Manrope"', 'Inter', 'sans-serif'],
       },
       colors: {
-        canvas: "#F7F4EF",
+        ivory: "#F8F5F0",
         paper: "#FCFAF7",
         surface: "#FFFFFF",
-        "warm-surface": "#F2ECE5",
-        sand: "#DED1C2",
-        champagne: "#C6A25F",
-        "gold-muted": "#B68D46",
+        "warm-sand": "#F1EBE4",
+        sand: "#E8DED2",
+        champagne: {
+          DEFAULT: "#C7A15D",
+          dark: "#A87D37",
+          soft: "#F1E6D0"
+        },
+        terracotta: {
+          DEFAULT: "#9A6047",
+          soft: "#EAD9D1"
+        },
+        sage: {
+          DEFAULT: "#71806F",
+          soft: "#E3E9E1"
+        },
         taupe: "#786A61",
         espresso: "#251B17",
         "deep-espresso": "#191310",
         "text-primary": "#251B17",
-        "text-secondary": "#766C65",
+        "text-secondary": "#756B65",
         "border-subtle": "rgba(37,27,23,0.10)",
         "border-strong": "rgba(37,27,23,0.16)",
         success: "#27896F",
@@ -44,13 +55,13 @@ export default {
           border: "rgba(37,27,23,0.09)",
           text: "#29231F",
           muted: "#7C736D",
-          brand: "#C29B4D",
-          "brand-light": "#F5ECD8",
+          brand: "#C7A15D",
+          "brand-light": "#F1E6D0",
         },
         border: "rgba(37,27,23,0.10)",
         input: "rgba(37,27,23,0.10)",
-        ring: "#C6A25F",
-        background: "#F7F4EF",
+        ring: "#C7A15D",
+        background: "#F8F5F0",
         foreground: "#251B17",
       },
       borderRadius: {

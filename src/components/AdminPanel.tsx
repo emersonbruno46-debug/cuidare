@@ -171,8 +171,8 @@ export default function AdminPanel({
                 }}
                 className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors ${
                   isActive 
-                    ? 'bg-[#F5ECD8] text-[#29231F]' 
-                    : 'text-[#7C736D] hover:bg-gray-100 hover:text-[#29231F]'
+                    ? 'bg-champagne-soft text-espresso' 
+                    : 'text-[#7C736D] hover:bg-gray-100 hover:text-espresso'
                 }`}
               >
                 <Icon size={18} strokeWidth={isActive ? 2.5 : 2} />
@@ -258,8 +258,8 @@ export default function AdminPanel({
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <div className="hidden sm:flex items-center gap-1.5 px-3 py-1 bg-emerald-50 text-emerald-700 rounded-full text-xs font-semibold">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"/>
+            <div className="hidden sm:flex items-center gap-1.5 px-3 py-1 bg-sage-soft text-sage rounded-full text-xs font-semibold">
+              <span className="w-1.5 h-1.5 rounded-full bg-sage animate-pulse"/>
               Online
             </div>
             <button className="p-2 rounded-md hover:bg-gray-100 text-gray-600 transition-colors relative">
@@ -277,9 +277,9 @@ export default function AdminPanel({
                 <div className="space-y-6">
                   <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                     {[
-                      { label: "Faturamento Bruto", value: `R$ ${stats.revenueTotal},00`, icon: DollarSign, trend: "+12%" },
+                      { label: "Faturamento Bruto", value: `R$ ${stats.revenueTotal},00`, icon: DollarSign, trend: "+12%", color: "text-[#C7A15D]" },
                       { label: "Agendamentos Ativos", value: stats.pendingCount, icon: Calendar, trend: "Hoje" },
-                      { label: "Concluídos", value: stats.completedCount, icon: Award, trend: "Sucesso" },
+                      { label: "Concluídos", value: stats.completedCount, icon: Award, trend: "Sucesso", color: "text-[#71806F]" },
                       { label: "Taxa de Falta", value: `${stats.cancellationRate}%`, icon: AlertCircle, trend: "Atenção", color: "text-red-600" }
                     ].map((metric, i) => (
                       <div key={i} className="bg-white p-5 rounded-xl border border-[rgba(37,27,23,0.09)] shadow-sm flex flex-col justify-between">
@@ -355,13 +355,12 @@ export default function AdminPanel({
                     </div>
                   </div>
                   
-                  {/* Clean Visual Grid Layout for Schedule */}
-                  <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 items-start">
                     {professionals.map(pro => {
                       const proBookings = agendaBookings.filter(b => b.professionalId === pro.id);
                       return (
-                        <div key={pro.id} className="bg-[#FCFBF9] rounded-xl border border-[rgba(37,27,23,0.09)] flex flex-col h-[500px]">
-                          <div className="p-4 border-b border-[rgba(37,27,23,0.09)] bg-white rounded-t-xl flex justify-between items-center">
+                        <div key={pro.id} className="bg-[#FCFBF9] rounded-xl border border-[rgba(37,27,23,0.09)] flex flex-col min-h-[140px] max-h-[500px]">
+                          <div className="p-4 border-b border-[rgba(37,27,23,0.09)] bg-white rounded-t-xl flex justify-between items-center shrink-0">
                             <span className="font-semibold text-sm text-[#29231F]">{pro.name}</span>
                             <span className="text-xs text-gray-500 font-medium">{proBookings.length} horários</span>
                           </div>
@@ -380,8 +379,8 @@ export default function AdminPanel({
                               </div>
                             ))}
                             {proBookings.length === 0 && (
-                              <div className="h-full flex flex-col items-center justify-center text-gray-400 text-xs py-10">
-                                Livre
+                              <div className="h-full flex flex-col items-center justify-center text-gray-400 text-[13px] font-medium py-6 bg-white/50 rounded-lg border border-dashed border-gray-200">
+                                Sem agendamentos nesta data
                               </div>
                             )}
                           </div>

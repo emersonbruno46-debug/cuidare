@@ -11,7 +11,7 @@
   }
 
   body {
-    @apply bg-canvas text-text-primary font-sans antialiased overflow-x-hidden;
+    @apply bg-ivory text-text-primary font-sans antialiased overflow-x-hidden;
   }
 
   h1, h2, h3, h4, h5, h6 {
@@ -34,11 +34,11 @@
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: #DED1C2; /* sand */
+  background: #E8DED2; /* sand */
   border-radius: 10px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #B68D46; /* gold-muted */
+  background: #C7A15D; /* champagne */
 }
 
 /* Luxury Glassmorphism - Refined */
@@ -68,8 +68,8 @@
   @apply transition-all duration-300;
 }
 .glass-button:hover {
-  background: #C6A25F;
-  border-color: #C6A25F;
+  background: #C7A15D;
+  border-color: #C7A15D;
   color: #FFFFFF;
 }
 

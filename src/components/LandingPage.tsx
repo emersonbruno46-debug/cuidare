@@ -107,7 +107,7 @@ export default function LandingPage({ onOpenBooking, onNavigateToAdmin }: Landin
   }, { scope: heroRef });
 
   return (
-    <div className="min-h-screen bg-canvas relative selection:bg-champagne selection:text-white">
+    <div className="min-h-screen bg-ivory relative selection:bg-champagne selection:text-white">
       
       {/* HEADER / NAVBAR */}
       <nav 
@@ -172,24 +172,25 @@ export default function LandingPage({ onOpenBooking, onNavigateToAdmin }: Landin
       {/* HERO SECTION: Editorial Beauty Composition */}
       <section 
         ref={heroRef}
-        className="relative pt-[120px] pb-16 lg:pb-0 min-h-screen lg:min-h-0 lg:h-screen flex items-center bg-canvas overflow-hidden"
+        className="relative pt-[120px] pb-16 lg:pb-0 min-h-screen lg:min-h-0 lg:h-screen flex items-center bg-ivory overflow-hidden"
       >
         {/* Background Fachada (Soft integration) */}
         <div ref={heroImageRef} className="absolute inset-0 z-0">
-          <img src="/BACKGROUND HERO.png" alt="Fachada" className="w-full h-full object-cover opacity-[0.15]" />
-          <div className="absolute inset-0 bg-gradient-to-r from-canvas via-canvas/90 to-transparent lg:w-2/3" />
-          <div className="absolute inset-0 bg-gradient-to-t from-canvas via-transparent to-transparent" />
+          <img src="/BACKGROUND HERO.png" alt="Fachada" className="w-full h-full object-cover opacity-40 mix-blend-multiply" />
+          <div className="absolute inset-0 bg-gradient-to-r from-ivory via-ivory/80 to-transparent lg:w-2/3" />
+          <div className="absolute inset-0 bg-gradient-to-t from-ivory via-transparent to-transparent" />
         </div>
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full z-10 grid lg:grid-cols-12 gap-8 items-center h-full">
           
           {/* TEXT CONTENT (5-6 columns) */}
           <div ref={heroContentRef} className="lg:col-span-5 flex flex-col items-start pt-8 lg:pt-0">
-            <span className="hero-eyebrow text-xs uppercase tracking-[0.2em] text-taupe font-semibold mb-4 lg:mb-6 block">
+            <span className="hero-eyebrow text-xs uppercase tracking-[0.2em] text-taupe font-semibold mb-4 lg:mb-6 flex items-center gap-2">
+              <span className="w-1.5 h-1.5 rounded-full bg-champagne block"></span>
               Cuidare Espaço de Beleza e Saúde
             </span>
             <h1 className="hero-h1 text-[42px] sm:text-[52px] lg:text-[clamp(58px,5vw,82px)] font-serif text-espresso leading-[1.05] mb-6">
-              Beleza, cuidado e praticidade em um só lugar.
+              Beleza, cuidado e <span className="text-champagne font-serif italic">praticidade</span> em um só lugar.
             </h1>
             <p className="hero-p text-text-secondary text-base lg:text-[17px] leading-relaxed mb-8 max-w-[90%]">
               Agende online de forma rápida e segura seu horário com nossas profissionais. Escolha seu serviço e desfrute de uma experiência editorial e precisa.
@@ -205,22 +206,22 @@ export default function LandingPage({ onOpenBooking, onNavigateToAdmin }: Landin
           </div>
 
           {/* HUMAN VISUAL (6-7 columns) - Modular API for future real photos */}
-          <div className="lg:col-span-7 relative h-full min-h-[400px] lg:min-h-full flex items-end justify-center lg:justify-end mt-12 lg:mt-0">
+          <div className="lg:col-span-7 relative h-full min-h-[400px] lg:min-h-full flex items-end justify-center lg:justify-end mt-12 lg:mt-0 lg:ml-auto w-full lg:w-[110%]">
             
             {/* 
               FUTURE ASSET API STRUCTURE: 
               Separated wrappers for easy cutouts swapping.
               Currently using the group image as a fallback, but placed cleanly.
             */}
-            <div className="relative w-full max-w-[600px] lg:max-w-none lg:w-[120%] lg:-mr-[10%] flex items-end justify-center hero-prof">
+            <div className="relative w-full max-w-[750px] lg:max-w-none flex items-end justify-center lg:justify-end hero-prof">
               <img 
                 src="/PROFISSIONAIS.png" 
                 alt="Profissionais Cuidare" 
-                className="w-full h-auto object-contain object-bottom origin-bottom mix-blend-multiply" 
-                style={{ objectPosition: 'center bottom', transform: 'scale(1.02)' }}
+                className="w-[125%] h-auto object-contain object-bottom origin-bottom mix-blend-multiply" 
+                style={{ objectPosition: 'center bottom' }}
               />
               {/* Subtle contact shadow simulation */}
-              <div className="absolute bottom-0 w-[80%] h-4 bg-black/10 blur-xl rounded-full" />
+              <div className="absolute bottom-0 w-[90%] h-3 bg-black/15 blur-xl rounded-full" />
             </div>
 
           </div>
@@ -228,7 +229,7 @@ export default function LandingPage({ onOpenBooking, onNavigateToAdmin }: Landin
       </section>
 
       {/* CONCEPT SECTION: Editorial Spread */}
-      <section id="sobre" ref={conceptRef} className="py-24 bg-paper relative">
+      <section id="sobre" ref={conceptRef} className="py-24 bg-warm-sand relative">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col lg:flex-row items-center gap-16 lg:gap-24">
             
@@ -249,7 +250,7 @@ export default function LandingPage({ onOpenBooking, onNavigateToAdmin }: Landin
                   </span>
                 </div>
                 <div className="flex items-center gap-3">
-                  <ShieldCheck className="text-success" size={24} />
+                  <ShieldCheck className="text-sage" size={24} />
                   <span className="text-sm font-medium text-text-secondary">
                     100% nas normas<br/>da vigilância sanitária
                   </span>
@@ -273,7 +274,7 @@ export default function LandingPage({ onOpenBooking, onNavigateToAdmin }: Landin
       </section>
 
       {/* SERVICES SECTION */}
-      <section id="servicos" className="py-24 bg-canvas">
+      <section id="servicos" className="py-24 bg-ivory">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="mb-16">
             <h2 className="text-[36px] lg:text-[48px] font-serif text-espresso mb-4">Nossos Serviços</h2>
@@ -281,25 +282,25 @@ export default function LandingPage({ onOpenBooking, onNavigateToAdmin }: Landin
           </div>
 
           {/* Premium Navigation Rail */}
-          <div className="flex overflow-x-auto gap-1 mb-10 border-b border-border-subtle no-scrollbar pb-1">
+          <div className="flex overflow-x-auto gap-2 mb-10 border-b border-border-subtle no-scrollbar pb-3">
             {categories.map((cat) => {
               const isActive = activeCategory === cat.id;
               return (
                 <button
                   key={cat.id}
                   onClick={() => setActiveCategory(cat.id)}
-                  className={`relative px-5 py-3 text-sm font-medium whitespace-nowrap transition-colors ${
-                    isActive ? 'text-espresso' : 'text-taupe hover:text-espresso'
+                  className={`relative px-4 py-2.5 text-sm font-medium whitespace-nowrap transition-colors rounded-lg z-10 ${
+                    isActive ? 'text-[#70542D]' : 'text-text-secondary hover:text-espresso bg-transparent'
                   }`}
                 >
-                  {cat.name}
                   {isActive && (
                     <motion.div 
-                      layoutId="serviceTabUnderline"
-                      className="absolute bottom-0 left-0 right-0 h-0.5 bg-espresso"
-                      transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                      layoutId="serviceTabBackground"
+                      className="absolute inset-0 bg-champagne-soft rounded-lg -z-10"
+                      transition={{ duration: 0.25, ease: "easeOut" }}
                     />
                   )}
+                  {cat.name}
                 </button>
               );
             })}
@@ -316,7 +317,7 @@ export default function LandingPage({ onOpenBooking, onNavigateToAdmin }: Landin
                   exit={{ opacity: 0, y: -10 }}
                   transition={{ duration: 0.25, ease: "easeOut" }}
                   key={service.id}
-                  className="group flex flex-col md:flex-row md:items-center justify-between p-4 sm:p-6 bg-paper hover:bg-white border border-border-subtle transition-colors rounded-sm gap-4"
+                  className="group flex flex-col md:flex-row md:items-center justify-between p-4 sm:p-6 bg-paper hover:bg-[#FBF7F1] border border-border-subtle hover:border-[rgba(199,161,93,0.18)] transition-colors rounded-sm gap-4"
                 >
                   <div className="md:w-1/2">
                     <h4 className="text-lg font-sans font-medium text-espresso mb-1">
@@ -373,12 +374,14 @@ export default function LandingPage({ onOpenBooking, onNavigateToAdmin }: Landin
                   Fallback portrait setup - ready for 4:5 real photos. 
                   Using a clean typographic placeholder for now to avoid fake feeling.
                 */}
-                <div className="aspect-[4/5] bg-warm-surface flex flex-col justify-end p-6 relative border border-border-subtle group overflow-hidden">
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent mix-blend-multiply pointer-events-none" />
+                <div className="aspect-[4/5] bg-warm-sand flex flex-col justify-end p-6 relative border border-border-subtle group overflow-hidden">
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/10 to-transparent mix-blend-multiply pointer-events-none" />
                   
-                  {/* Big Initial as temporary elegant graphic */}
-                  <div className="absolute inset-0 flex items-center justify-center opacity-[0.03] group-hover:scale-105 transition-transform duration-700 pointer-events-none">
-                    <span className="text-[250px] font-serif leading-none">{prof.name[0]}</span>
+                  {/* Big Initial as temporary elegant graphic - alternating soft brand colors */}
+                  <div className="absolute inset-0 flex items-center justify-center opacity-[0.08] group-hover:opacity-[0.12] transition-all duration-700 pointer-events-none">
+                    <span className={`text-[250px] font-serif leading-none ${['text-champagne', 'text-terracotta', 'text-sage'][prof.id.charCodeAt(0) % 3]}`}>
+                      {prof.name[0]}
+                    </span>
                   </div>
 
                   <div className="relative z-10 bg-white p-5 shadow-sm border border-border-subtle">
@@ -386,7 +389,7 @@ export default function LandingPage({ onOpenBooking, onNavigateToAdmin }: Landin
                     <span className="text-xs uppercase font-medium text-taupe block mb-4 tracking-wider">{prof.role}</span>
                     <div className="flex flex-wrap gap-2 mb-6">
                       {prof.specialties.slice(0,2).map((spec, i) => (
-                        <span key={i} className="text-[10px] px-2 py-1 bg-canvas text-text-secondary rounded-sm font-medium border border-border-subtle">
+                        <span key={i} className="text-[10px] px-2 py-1 bg-warm-sand text-taupe rounded-sm font-medium border border-border-subtle">
                           {spec}
                         </span>
                       ))}
@@ -406,14 +409,14 @@ export default function LandingPage({ onOpenBooking, onNavigateToAdmin }: Landin
       </section>
 
       {/* LOCATION & HOURS */}
-      <section id="horarios" className="py-24 bg-canvas border-t border-border-subtle">
+      <section id="horarios" className="py-24 bg-warm-sand border-t border-border-subtle">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col lg:flex-row gap-16 lg:gap-24">
             
             {/* Image (55-60%) */}
             <div className="lg:w-[55%]">
-              <div className="aspect-[4/3] bg-warm-surface overflow-hidden">
-                <img src="/BACKGROUND HERO.png" alt="Ambiente Cuidare" className="w-full h-full object-cover opacity-80 mix-blend-multiply" />
+              <div className="aspect-[4/3] bg-sand overflow-hidden">
+                <img src="/BACKGROUND HERO.png" alt="Ambiente Cuidare" className="w-full h-full object-cover opacity-90 mix-blend-multiply" />
               </div>
             </div>
 
@@ -467,15 +470,16 @@ export default function LandingPage({ onOpenBooking, onNavigateToAdmin }: Landin
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(198,162,95,0.08)_0%,transparent_60%)] pointer-events-none" />
         
         <div className="max-w-3xl mx-auto px-4 text-center z-10 relative">
+          <div className="w-12 h-px bg-champagne/45 mx-auto mb-6" />
           <h2 className="text-[40px] sm:text-[56px] font-serif text-white mb-6 leading-tight">
-            Seu momento de cuidado começa aqui.
+            Seu momento de <span className="text-champagne font-serif italic">cuidado</span> começa aqui.
           </h2>
           <p className="text-[#C8C2BE] text-base lg:text-[19px] leading-relaxed mb-10 max-w-2xl mx-auto font-light">
             Escolha o serviço, encontre o melhor horário disponível e agende seu momento de cuidado com total exclusividade.
           </p>
           <button
             onClick={() => onOpenBooking()}
-            className="h-14 px-10 bg-white text-espresso font-medium hover:bg-paper transition-colors rounded-sm"
+            className="h-14 px-10 bg-ivory text-espresso font-medium hover:bg-champagne hover:text-deep-espresso transition-colors rounded-sm"
           >
             Agendar meu horário
           </button>
