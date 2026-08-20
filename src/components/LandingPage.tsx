@@ -184,7 +184,7 @@ export default function LandingPage({ onOpenBooking, onNavigateToAdmin }: Landin
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full z-10 grid lg:grid-cols-12 gap-8 items-center h-full">
           
           {/* TEXT CONTENT (5-6 columns) */}
-          <div ref={heroContentRef} className="lg:col-span-5 flex flex-col items-start pt-8 lg:pt-0">
+          <div ref={heroContentRef} className="lg:col-span-6 xl:col-span-5 flex flex-col items-start pt-8 lg:pt-0 relative z-10">
             <span className="hero-eyebrow text-xs uppercase tracking-[0.2em] text-taupe font-semibold mb-4 lg:mb-6 flex items-center gap-2">
               <span className="w-1.5 h-1.5 rounded-full bg-champagne block"></span>
               Cuidare Espaço de Beleza e Saúde
@@ -205,25 +205,16 @@ export default function LandingPage({ onOpenBooking, onNavigateToAdmin }: Landin
             </div>
           </div>
 
-          {/* HUMAN VISUAL (6-7 columns) - Modular API for future real photos */}
-          <div className="lg:col-span-7 relative h-full min-h-[400px] lg:min-h-full flex items-end justify-center lg:justify-end mt-12 lg:mt-0 lg:ml-auto w-full lg:w-[110%]">
-            
-            {/* 
-              FUTURE ASSET API STRUCTURE: 
-              Separated wrappers for easy cutouts swapping.
-              Currently using the group image as a fallback, but placed cleanly.
-            */}
-            <div className="relative w-full max-w-[750px] lg:max-w-none flex items-end justify-center lg:justify-end hero-prof">
+          {/* HUMAN VISUAL - Liberado das colunas para maior escala */}
+          <div className="lg:absolute lg:bottom-0 lg:right-[-2%] lg:h-[90%] xl:h-[95%] lg:w-[60%] flex items-end justify-center lg:justify-end mt-12 lg:mt-0 relative h-[450px] w-full z-0 pointer-events-none">
+            <div className="relative h-full w-full flex items-end justify-center lg:justify-end hero-prof">
               <img 
                 src="/PROFISSIONAIS.png" 
                 alt="Profissionais Cuidare" 
-                className="w-[125%] h-auto object-contain object-bottom origin-bottom mix-blend-multiply" 
+                className="h-full w-auto max-w-none object-contain object-bottom origin-bottom mix-blend-multiply" 
                 style={{ objectPosition: 'center bottom' }}
               />
-              {/* Subtle contact shadow simulation */}
-              <div className="absolute bottom-0 w-[90%] h-3 bg-black/15 blur-xl rounded-full" />
             </div>
-
           </div>
         </div>
       </section>
