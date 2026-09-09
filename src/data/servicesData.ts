@@ -61,7 +61,7 @@ export const services: Service[] = [
     priceBase: 70,
     duration: 60,
     description: 'Corte feminino completo (lavagem, corte e secagem rápida).',
-    recommendations: 'Venha com o cabelo desembaraçado se possível.'
+    recommendations: ['Venha com o cabelo desembaraçado se possível.']
   },
   {
     id: 'mega-hair',
@@ -71,7 +71,7 @@ export const services: Service[] = [
     duration: 120,
     description: 'Aplicação profissional de extensões de cabelo (avaliação presencial recomendada).',
     variablePrice: true,
-    recommendations: 'Requer avaliação prévia do cabelo e da técnica ideal.'
+    recommendations: ['Requer avaliação prévia do cabelo e da técnica ideal.']
   },
   {
     id: 'finalizacao-p',
@@ -129,7 +129,7 @@ export const services: Service[] = [
     priceBase: 150,
     duration: 60,
     description: 'Tratamento focado na saúde do couro cabeludo e estimulação de crescimento dos fios.',
-    recommendations: 'Ideal para queda de cabelo, caspa ou couro cabeludo sensível.'
+    recommendations: ['Ideal para queda de cabelo, caspa ou couro cabeludo sensível.']
   },
   {
     id: 'tonalizacao',
@@ -151,7 +151,7 @@ export const services: Service[] = [
     duration: 150,
     description: 'Alisamento capilar orgânico e seguro, sem ardência, proporcionando brilho extremo.',
     variablePrice: true,
-    recommendations: 'Indique no formulário se possui químicas anteriores.'
+    recommendations: ['Indique no formulário se possui químicas anteriores.']
   },
   {
     id: 'progressiva-com-formol',
@@ -162,7 +162,7 @@ export const services: Service[] = [
     duration: 150,
     description: 'Alisamento tradicional de alta eficácia com selagem térmica dos fios.',
     variablePrice: true,
-    recommendations: 'Certifique-se de não possuir sensibilidade respiratória ao formol.'
+    recommendations: ['Certifique-se de não possuir sensibilidade respiratória ao formol.']
   },
 
   // UNHAS
@@ -243,14 +243,24 @@ export const services: Service[] = [
     description: 'Extensão de cílios com leques artesanais de fios ultrafinos para efeito volumoso e glamouroso.'
   },
 
-  // MAQUIAGEM
+  // MAQUIAGEM & PENTEADOS (MAÍSA RODRIGUES)
+  {
+    id: 'make-social-maisa',
+    name: 'Maquiagem Social',
+    category: 'maquiagem',
+    priceBase: 120,
+    duration: 60,
+    description: 'Maquiagem social sofisticada com alta durabilidade para festas e eventos.',
+    professionalIds: ['maisa']
+  },
   {
     id: 'make-social',
-    name: 'Maquiagem Social',
+    name: 'Maquiagem Social (Roberta)',
     category: 'maquiagem',
     priceBase: 150,
     duration: 60,
-    description: 'Maquiagem profissional para festas, formaturas e eventos sociais (sem cílios postiços).'
+    description: 'Maquiagem profissional para festas, formaturas e eventos sociais (sem cílios postiços).',
+    professionalIds: ['roberta']
   },
   {
     id: 'make-completa',
@@ -258,7 +268,61 @@ export const services: Service[] = [
     category: 'maquiagem',
     priceBase: 180,
     duration: 70,
-    description: 'Maquiagem profissional com preparação de pele de alta durabilidade e aplicação de cílios postiços premium.'
+    description: 'Maquiagem profissional com preparação de pele de alta durabilidade e aplicação de cílios postiços premium.',
+    professionalIds: ['roberta', 'maisa']
+  },
+  {
+    id: 'ondas-tradicionais',
+    name: 'Ondas Tradicionais',
+    category: 'penteados',
+    priceBase: 80,
+    duration: 45,
+    description: 'Ondas clássicas e elegantes com textura e movimento.',
+    note: 'Todos os penteados incluem finalização, texturização e volume.',
+    professionalIds: ['maisa']
+  },
+  {
+    id: 'ondas-hollywoodianas',
+    name: 'Ondas Hollywoodianas',
+    category: 'penteados',
+    priceBase: 120,
+    duration: 60,
+    description: 'Ondas marcadas estilo Hollywood com brilho e estrutura refinada.',
+    note: 'Todos os penteados incluem finalização, texturização e volume.',
+    professionalIds: ['maisa']
+  },
+  {
+    id: 'penteado-semipreso',
+    name: 'Penteado Semipreso',
+    category: 'penteados',
+    priceBase: 150,
+    duration: 60,
+    description: 'Penteado semipreso elegante para noivas, formandas e convidadas.',
+    note: 'Todos os penteados incluem finalização, texturização e volume.',
+    professionalIds: ['maisa']
+  },
+  {
+    id: 'penteado-coque',
+    name: 'Penteado Coque',
+    category: 'penteados',
+    priceBase: 180,
+    duration: 70,
+    description: 'Coque clássico, desestruturado ou baixo de alta fixação.',
+    note: 'Todos os penteados incluem finalização, texturização e volume.',
+    professionalIds: ['maisa']
+  },
+  {
+    id: 'preparacao-cabelo',
+    name: 'Preparação do Cabelo',
+    category: 'escovas',
+    priceBase: 35,
+    priceType: 'range',
+    priceDetails: { P: 35, M: 45, G: 55 },
+    priceRange: { min: 55, max: 60 },
+    duration: 45,
+    description: 'Lavagem + escova realizada no Espaço Cuidare.',
+    variablePrice: true,
+    professionalIds: ['maisa', 'railma', 'fernanda']
   },
 
   // ESTÉTICA
@@ -277,7 +341,7 @@ export const services: Service[] = [
     priceBase: 120,
     duration: 60,
     description: 'Extração de cravos e impurezas com vapor de ozônio, esfoliação e máscara calmante.',
-    recommendations: 'Evite exposição solar direta nas 24h seguintes.'
+    recommendations: ['Evite exposição solar direta nas 24h seguintes.']
   },
   {
     id: 'depilacao-laser',
@@ -287,7 +351,7 @@ export const services: Service[] = [
     duration: 30,
     description: 'Remoção duradoura de pelos com tecnologia de laser de última geração (valor por área).',
     variablePrice: true,
-    recommendations: 'Não depilar com pinça ou cera nas 3 semanas anteriores.'
+    recommendations: ['Não depilar com pinça ou cera nas 3 semanas anteriores.']
   },
   {
     id: 'massagem-relaxante',

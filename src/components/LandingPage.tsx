@@ -10,13 +10,14 @@ import {
 } from 'lucide-react';
 import { services } from '../data/servicesData';
 import { professionals } from '../data/professionalsData';
-import type { Service } from '../types';
+import type { Service, Professional } from '../types';
 
 gsap.registerPlugin(ScrollTrigger, Flip);
 
 interface LandingPageProps {
   onOpenBooking: (service?: Service) => void;
   onNavigateToAdmin: () => void;
+  professionals?: Professional[];
 }
 
 // Cuidare SVG Logo Component
@@ -39,6 +40,7 @@ export default function LandingPage({ onOpenBooking, onNavigateToAdmin }: Landin
   // Group services by category
   const categories = [
     { id: 'escovas', name: 'Escovas & Modelagem', icon: Scissors },
+    { id: 'penteados', name: 'Penteados & Ondas', icon: Sparkles },
     { id: 'tratamentos', name: 'Tratamentos', icon: Heart },
     { id: 'quimicas', name: 'Químicas', icon: Sparkles },
     { id: 'unhas', name: 'Manicure & Pedicure', icon: Sparkles },
@@ -51,9 +53,12 @@ export default function LandingPage({ onOpenBooking, onNavigateToAdmin }: Landin
   const filteredServices = services.filter(s => s.category === activeCategory);
 
   const getServiceFormattedPrice = (service: Service) => {
+    if (service.priceType === 'range' && service.priceRange) {
+      return `R$ ${service.priceRange.min},00 a R$ ${service.priceRange.max},00`;
+    }
     if (service.variablePrice) {
       if (service.priceRange) {
-        return `A partir de R$ ${service.priceRange.min},00`;
+        return `R$ ${service.priceRange.min},00 a R$ ${service.priceRange.max},00`;
       }
       if (service.priceDetails) {
         return `A partir de R$ ${service.priceDetails.P},00`;
@@ -300,53 +305,103 @@ export default function LandingPage({ onOpenBooking, onNavigateToAdmin }: Landin
           {/* Clean Table/List Hybrid */}
           <div className="space-y-2">
             <AnimatePresence mode="popLayout">
-              {filteredServices.map((service) => (
-                <motion.div 
-                  layout
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -10 }}
-                  transition={{ duration: 0.25, ease: "easeOut" }}
-                  key={service.id}
-                  className="group flex flex-col md:flex-row md:items-center justify-between p-4 sm:p-6 bg-paper hover:bg-[#FBF7F1] border border-border-subtle hover:border-[rgba(199,161,93,0.18)] transition-colors rounded-sm gap-4"
-                >
-                  <div className="md:w-1/2">
-                    <h4 className="text-lg font-sans font-medium text-espresso mb-1">
-                      {service.name}
-                    </h4>
-                    <p className="text-text-secondary text-sm font-light leading-relaxed">
-                      {service.description}
-                    </p>
-                  </div>
+              {filteredServices.map((service) => {
+                const profs = professionals.filter(p => p.categories.includes(service.category));
+                const isExternal = profs.length > 0 && profs.every(p => p.providerType === 'external_room_provider');
+                const firstProf = profs[0];
 
-                  <div className="flex items-center justify-between md:justify-end gap-6 md:gap-12 md:w-1/2">
-                    <div className="text-sm text-taupe flex flex-col">
-                      <span className="md:hidden text-[10px] uppercase tracking-wider mb-0.5 font-semibold text-text-secondary">Duração</span>
-                      {service.duration} min
-                    </div>
-                    
-                    <div className="text-right flex flex-col min-w-[100px]">
-                      <span className="md:hidden text-[10px] uppercase tracking-wider mb-0.5 font-semibold text-text-secondary text-left">Valor</span>
-                      <span className="font-sans font-medium text-espresso">
-                        {getServiceFormattedPrice(service)}
-                      </span>
+                return (
+                  <motion.div 
+                    layout
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    transition={{ duration: 0.25, ease: "easeOut" }}
+                    key={service.id}
+                    className="group flex flex-col md:flex-row md:items-center justify-between p-4 sm:p-6 bg-paper hover:bg-[#FBF7F1] border border-border-subtle hover:border-[rgba(199,161,93,0.18)] transition-colors rounded-sm gap-4"
+                  >
+                    <div className="md:w-1/2">
+                      <h4 className="text-lg font-sans font-medium text-espresso mb-1 flex items-center gap-2">
+                        {service.name}
+                      </h4>
+                      <p className="text-text-secondary text-sm font-light leading-relaxed">
+                        {service.description}
+                      </p>
+                      {service.note && (
+                        <p className="text-[11px] text-[#70542D] italic font-serif mt-1 flex items-center gap-1">
+                          <Sparkles size={11} className="inline text-[#C7A15D]" /> {service.note}
+                        </p>
+                      )}
+                      {isExternal && (
+                        <span className="text-[10px] bg-warm-sand text-taupe px-2 py-1 rounded border border-border-subtle inline-block mt-2 font-medium">
+                          Atendimento independente
+                        </span>
+                      )}
                     </div>
 
-                    <button
-                      onClick={() => onOpenBooking(service)}
-                      className="px-4 py-2 border border-border-strong text-espresso text-xs font-semibold uppercase hover:bg-espresso hover:text-white transition-colors"
-                    >
-                      Agendar
-                    </button>
-                  </div>
-                </motion.div>
-              ))}
+                    <div className="flex items-center justify-between md:justify-end gap-6 md:gap-12 md:w-1/2">
+                      <div className="text-sm text-taupe flex flex-col">
+                        <span className="md:hidden text-[10px] uppercase tracking-wider mb-0.5 font-semibold text-text-secondary">Duração</span>
+                        {service.duration} min
+                      </div>
+                      
+                      <div className="text-right flex flex-col min-w-[100px]">
+                        <span className="md:hidden text-[10px] uppercase tracking-wider mb-0.5 font-semibold text-text-secondary text-left">Valor</span>
+                        <span className="font-sans font-medium text-espresso">
+                          {getServiceFormattedPrice(service)}
+                        </span>
+                      </div>
+
+                      {isExternal ? (
+                        <a
+                          href={`https://wa.me/${firstProf?.whatsapp?.replace(/\D/g, '') || '0000000000'}?text=Olá, ${firstProf?.name}! Vi seu atendimento pelo site da Cuidare e gostaria de saber sobre disponibilidade para ${service.name}.`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="px-4 py-2 border border-border-strong text-espresso text-xs font-semibold uppercase hover:bg-champagne hover:text-white hover:border-champagne transition-colors whitespace-nowrap text-center"
+                        >
+                          Consultar <br className="hidden sm:block"/> Disp.
+                        </a>
+                      ) : (
+                        <button
+                          onClick={() => onOpenBooking(service)}
+                          className="px-4 py-2 border border-border-strong text-espresso text-xs font-semibold uppercase hover:bg-espresso hover:text-white transition-colors"
+                        >
+                          Agendar
+                        </button>
+                      )}
+                    </div>
+                  </motion.div>
+                );
+              })}
             </AnimatePresence>
           </div>
           
           <p className="text-[11px] text-taupe mt-8 uppercase tracking-widest text-center">
             * Valores de referência, sujeitos à avaliação.
           </p>
+        </div>
+      </section>
+
+      {/* COMPACT PROCESS STRIP */}
+      <section className="py-12 bg-[#F8F1E4] border-t border-border-subtle">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 md:gap-0 md:divide-x divide-champagne/20">
+            <div className="flex flex-col px-4 text-center md:text-left">
+              <span className="text-2xl font-serif text-champagne mb-2">01</span>
+              <h4 className="text-espresso font-semibold uppercase text-sm tracking-wider mb-1">Escolha</h4>
+              <p className="text-xs text-text-secondary">Selecione o serviço e, quando aplicável, a profissional.</p>
+            </div>
+            <div className="flex flex-col px-4 text-center md:text-left">
+              <span className="text-2xl font-serif text-champagne mb-2">02</span>
+              <h4 className="text-espresso font-semibold uppercase text-sm tracking-wider mb-1">Encontre seu horário</h4>
+              <p className="text-xs text-text-secondary">Veja apenas datas e horários realmente disponíveis.</p>
+            </div>
+            <div className="flex flex-col px-4 text-center md:text-left">
+              <span className="text-2xl font-serif text-champagne mb-2">03</span>
+              <h4 className="text-espresso font-semibold uppercase text-sm tracking-wider mb-1">Confirme</h4>
+              <p className="text-xs text-text-secondary">Informe seus dados e receba a confirmação do agendamento.</p>
+            </div>
+          </div>
         </div>
       </section>
 
@@ -359,42 +414,61 @@ export default function LandingPage({ onOpenBooking, onNavigateToAdmin }: Landin
           </div>
 
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8">
-            {professionals.map((prof) => (
-              <div key={prof.id} className="flex flex-col">
-                {/* 
-                  Fallback portrait setup - ready for 4:5 real photos. 
-                  Using a clean typographic placeholder for now to avoid fake feeling.
-                */}
-                <div className="aspect-[4/5] bg-warm-sand flex flex-col justify-end p-6 relative border border-border-subtle group overflow-hidden">
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/10 to-transparent mix-blend-multiply pointer-events-none" />
-                  
-                  {/* Big Initial as temporary elegant graphic - alternating soft brand colors */}
-                  <div className="absolute inset-0 flex items-center justify-center opacity-[0.08] group-hover:opacity-[0.12] transition-all duration-700 pointer-events-none">
-                    <span className={`text-[250px] font-serif leading-none ${['text-champagne', 'text-terracotta', 'text-sage'][prof.id.charCodeAt(0) % 3]}`}>
-                      {prof.name[0]}
-                    </span>
-                  </div>
+            {professionals.map((prof) => {
+              const initials = prof.name.split(' ').map(n => n[0]).join('').slice(0, 2);
+              return (
+                <div key={prof.id} className="flex flex-col">
+                  {/* Portrait setup: Real photo if available, or clean typographic monogram placeholder */}
+                  <div className="aspect-[4/5] bg-[#F7F2EA] flex flex-col justify-end p-6 relative border border-border-subtle group overflow-hidden rounded-sm">
+                    {prof.photoUrl ? (
+                      <img 
+                        src={prof.photoUrl} 
+                        alt={prof.name} 
+                        className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" 
+                      />
+                    ) : (
+                      <>
+                        <div className="absolute inset-0 bg-gradient-to-t from-[#29231F]/15 via-transparent to-transparent pointer-events-none" />
+                        <div className="absolute inset-0 flex items-center justify-center opacity-[0.09] group-hover:opacity-[0.14] transition-all duration-700 pointer-events-none">
+                          <span className={`text-[200px] font-serif leading-none tracking-tighter ${['text-champagne', 'text-terracotta', 'text-sage'][prof.id.charCodeAt(0) % 3]}`}>
+                            {initials}
+                          </span>
+                        </div>
+                      </>
+                    )}
 
-                  <div className="relative z-10 bg-white p-5 shadow-sm border border-border-subtle">
-                    <h3 className="text-xl font-serif text-espresso mb-1">{prof.name}</h3>
-                    <span className="text-xs uppercase font-medium text-taupe block mb-4 tracking-wider">{prof.role}</span>
-                    <div className="flex flex-wrap gap-2 mb-6">
-                      {prof.specialties.slice(0,2).map((spec, i) => (
-                        <span key={i} className="text-[10px] px-2 py-1 bg-warm-sand text-taupe rounded-sm font-medium border border-border-subtle">
-                          {spec}
+                    {/* Badge de destaque (ex: Especialidade: Noivas) */}
+                    {(prof.specialtyHighlight || prof.specialtyBadge) && (
+                      <div className="absolute top-4 left-4 z-20">
+                        <span className="px-3 py-1.5 bg-[#F8F1E4]/95 backdrop-blur-md text-[#70542D] text-[10px] font-bold tracking-widest rounded-md border border-[#E6D4B8] flex items-center gap-1.5 uppercase shadow-sm">
+                          <Sparkles size={11} className="text-[#C7A15D]" /> {prof.specialtyHighlight || prof.specialtyBadge}
                         </span>
-                      ))}
+                      </div>
+                    )}
+
+                    <div className="relative z-10 bg-white/95 backdrop-blur-sm p-5 shadow-sm border border-border-subtle">
+                      <h3 className="text-xl font-serif text-espresso mb-1">{prof.name}</h3>
+                      <span className="text-xs uppercase font-medium text-taupe block mb-3 tracking-wider">{prof.role}</span>
+                      
+                      <div className="flex flex-wrap gap-1.5 mb-5">
+                        {prof.specialties.slice(0, 3).map((spec, i) => (
+                          <span key={i} className="text-[10px] px-2 py-0.5 bg-warm-sand text-taupe rounded-sm font-medium border border-border-subtle">
+                            {spec}
+                          </span>
+                        ))}
+                      </div>
+
+                      <button
+                        onClick={() => onOpenBooking(undefined)}
+                        className="text-sm font-medium text-espresso flex items-center gap-2 hover:text-champagne transition-colors group-hover:translate-x-1 duration-300"
+                      >
+                        Agendar com {prof.name.split(' ')[0]} <ArrowRight size={14} />
+                      </button>
                     </div>
-                    <button
-                      onClick={() => onOpenBooking(undefined)}
-                      className="text-sm font-medium text-espresso flex items-center gap-2 hover:text-champagne transition-colors"
-                    >
-                      Agendar com {prof.name.split(' ')[0]} <ArrowRight size={14} />
-                    </button>
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       </section>

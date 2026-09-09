@@ -5,8 +5,9 @@ import {
   ArrowLeft, ArrowRight, Search, Sparkles, MapPin
 } from 'lucide-react';
 import { services } from '../data/servicesData';
-import { professionals } from '../data/professionalsData';
+import { professionals as defaultProfessionals } from '../data/professionalsData';
 import type { Service, Professional, Booking } from '../types';
+import { getAvailableSlots } from '../lib/availability';
 
 interface BookingModalProps {
   isOpen: boolean;
@@ -14,6 +15,7 @@ interface BookingModalProps {
   initialService?: Service;
   existingBookings: Booking[];
   onAddBooking: (booking: Booking) => void;
+  professionals?: Professional[];
 }
 
 export default function BookingModal({ 
@@ -21,8 +23,10 @@ export default function BookingModal({
   onClose, 
   initialService, 
   existingBookings, 
-  onAddBooking 
+  onAddBooking,
+  professionals: propProfessionals
 }: BookingModalProps) {
+  const activeProfessionals = propProfessionals || defaultProfessionals;
   const [step, setStep] = useState(1);
   const [selectedService, setSelectedService] = useState<Service | null>(null);
   const [selectedProfessional, setSelectedProfessional] = useState<Professional | null>(null);
@@ -59,8 +63,14 @@ export default function BookingModal({
 
   // Filter professionals that perform the selected service
   const eligibleProfessionals = selectedService 
-    ? professionals.filter(p => p.categories.includes(selectedService.category))
-    : professionals;
+    ? activeProfessionals.filter(p => {
+        if (p.active === false) return false;
+        if (selectedService.professionalIds && selectedService.professionalIds.length > 0) {
+          return selectedService.professionalIds.includes(p.id);
+        }
+        return p.categories.includes(selectedService.category);
+      })
+    : activeProfessionals.filter(p => p.active !== false);
 
   // Generate calendar days for the next 14 days
   const getNext14Days = () => {
@@ -81,60 +91,14 @@ export default function BookingModal({
 
   const calendarDays = getNext14Days();
 
-  // Generate hourly slots for the selected day based on salon schedule
-  const getAvailableSlots = (dateString: string) => {
-    if (!dateString) return [];
-    
-    const date = new Date(dateString + 'T00:00:00');
-    const dayOfWeek = date.getDay(); // 2 to 6 (Tue to Sat)
-    
-    let slots: string[] = [];
-    
-    if (dayOfWeek >= 2 && dayOfWeek <= 5) {
-      // Terça a Sexta: 08:00 às 11:00 and 14:00 às 18:00
-      slots = [
-        '08:00', '08:30', '09:00', '09:30', '10:00', '10:30', '11:00',
-        '14:00', '14:30', '15:00', '15:30', '16:00', '16:30', '17:00', '17:30'
-      ];
-    } else if (dayOfWeek === 6) {
-      // Sábado: 08:00 às 18:00 (sem intervalo)
-      slots = [
-        '08:00', '08:30', '09:00', '09:30', '10:00', '10:30', '11:00', '11:30',
-        '12:00', '12:30', '13:00', '13:30', '14:00', '14:30', '15:00', '15:30',
-        '16:00', '16:30', '17:00', '17:30'
-      ];
-    }
-
-    // Filter out slots that are already booked
-    return slots.filter(time => {
-      // If we selected a specific professional
-      if (selectedProfessional) {
-        const isBooked = existingBookings.some(
-          b => b.date === dateString && 
-               b.time === time && 
-               b.professionalId === selectedProfessional.id &&
-               b.status !== 'cancelado'
-        );
-        return !isBooked;
-      }
-      
-      // If "First Available" professional is selected:
-      // It is available if at least one eligible professional is free
-      const freeProfessionals = eligibleProfessionals.filter(p => {
-        const isBooked = existingBookings.some(
-          b => b.date === dateString && 
-               b.time === time && 
-               b.professionalId === p.id &&
-               b.status !== 'cancelado'
-        );
-        return !isBooked;
-      });
-
-      return freeProfessionals.length > 0;
-    });
-  };
-
-  const availableTimeSlots = getAvailableSlots(selectedDate);
+  // Generate hourly slots for the selected day based on real availability logic
+  const availableTimeSlots = getAvailableSlots(
+    selectedDate, 
+    selectedProfessional?.id || null, 
+    selectedService?.duration || 30, 
+    existingBookings,
+    eligibleProfessionals
+  );
 
   // Auto-allocate first available professional if needed
   const determineProfessional = (): Professional => {
@@ -157,7 +121,7 @@ export default function BookingModal({
   const handleNextStep = () => {
     if (step === 1 && selectedService) {
       // Find eligible pros. If only one, select her by default
-      const pros = professionals.filter(p => p.categories.includes(selectedService.category));
+      const pros = activeProfessionals.filter(p => p.categories.includes(selectedService.category));
       if (pros.length === 1) {
         setSelectedProfessional(pros[0]);
         setIsFirstAvailable(false);
@@ -200,6 +164,7 @@ export default function BookingModal({
       clientEmail: clientEmail || undefined,
       notes: clientNotes || undefined,
       status: 'pendente',
+      origin: 'site',
       createdAt: new Date().toISOString(),
       price: selectedService.priceBase, // standard price
       duration: selectedService.duration
@@ -215,19 +180,60 @@ export default function BookingModal({
     return date.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' });
   };
 
-  // Pre-filled WhatsApp link builder
-  const getWhatsAppLink = () => {
-    if (!selectedService || !selectedDate || !selectedTime) return '#';
+  // Pre-filled WhatsApp link builder per professional
+  const getWhatsAppDetails = () => {
+    if (!selectedService || !selectedDate || !selectedTime) {
+      return {
+        whatsappUrl: '#',
+        buttonLabel: 'Confirmar no WhatsApp',
+        proName: 'Profissional',
+        proFirstName: 'Profissional'
+      };
+    }
     const pro = determineProfessional();
+    const proName = pro.name;
+    const proFirstName = proName.split(' ')[0];
+    const proPhoneRaw = pro.whatsapp || '5538992380097';
+    const cleanPhone = proPhoneRaw.replace(/\D/g, '');
+    const finalPhone = cleanPhone.startsWith('55') ? cleanPhone : '55' + cleanPhone;
     const formattedDate = new Date(selectedDate + 'T00:00:00').toLocaleDateString('pt-BR');
-    const message = `Olá Cuidare! Acabei de agendar meu horário pelo site!\n\n📌 *Detalhes do Agendamento:*\n🔹 *Cliente:* ${clientName}\n🔹 *Serviço:* ${selectedService.name}\n🔹 *Profissional:* ${pro.name}\n🔹 *Data:* ${formattedDate}\n🔹 *Horário:* ${selectedTime}h\n\nPor favor, confirmem na minha agenda! Obrigado.`;
-    return `https://wa.me/5538991007706?text=${encodeURIComponent(message)}`;
+
+    const message = `Olá, ${proName}! Acabei de realizar um agendamento pelo site da Cuidare.
+
+Nome: ${clientName}
+Serviço: ${selectedService.name}
+Data: ${formattedDate}
+Horário: ${selectedTime}
+
+Gostaria de confirmar meu agendamento.`;
+
+    const whatsappUrl = `https://wa.me/${finalPhone}?text=${encodeURIComponent(message)}`;
+    const buttonLabel = `Falar com ${proFirstName} no WhatsApp`;
+
+    return { whatsappUrl, buttonLabel, proName, proFirstName };
+  };
+
+  const formatModalServicePrice = (service: Service) => {
+    if (service.priceType === 'range' && service.priceRange) {
+      return `R$ ${service.priceRange.min},00 a R$ ${service.priceRange.max},00`;
+    }
+    if (service.variablePrice) {
+      if (service.priceRange) {
+        return `R$ ${service.priceRange.min},00 a R$ ${service.priceRange.max},00`;
+      }
+      if (service.priceDetails) {
+        return `A partir de R$ ${service.priceDetails.P},00`;
+      }
+      return `A partir de R$ ${service.priceBase},00`;
+    }
+    return `R$ ${service.priceBase},00`;
   };
 
   // Categories helper list for search step
   const categoriesList = [
     { id: 'todos', name: 'Todos' },
     { id: 'escovas', name: 'Escovas' },
+    { id: 'penteados', name: 'Penteados' },
     { id: 'tratamentos', name: 'Tratamentos' },
     { id: 'quimicas', name: 'Químicas' },
     { id: 'unhas', name: 'Unhas' },
@@ -335,13 +341,25 @@ export default function BookingModal({
                           <span className="text-[10px] text-taupe font-semibold uppercase">{service.category}</span>
                         </div>
                         <p className="text-text-secondary text-xs mt-1 max-w-md line-clamp-1">{service.description}</p>
-                        <span className="text-[10px] text-taupe bg-warm-sand border border-border-subtle px-2 py-0.5 rounded mt-2 inline-block font-semibold">
-                          🕒 {service.duration} min
-                        </span>
+                        {service.note && (
+                          <p className="text-[11px] text-[#70542D] italic font-serif mt-0.5 flex items-center gap-1">
+                            <Sparkles size={11} className="inline text-[#C7A15D]" /> {service.note}
+                          </p>
+                        )}
+                        <div className="flex gap-1.5 mt-2 flex-wrap">
+                          <span className="text-[10px] text-taupe bg-warm-sand border border-border-subtle px-2 py-0.5 rounded inline-block font-semibold">
+                            🕒 {service.duration} min
+                          </span>
+                          {service.recommendations && service.recommendations.length > 0 && (
+                            <span className="text-[10px] text-champagne-dark bg-champagne-soft border border-champagne/20 px-2 py-0.5 rounded inline-block font-semibold">
+                              ⓘ Orientações
+                            </span>
+                          )}
+                        </div>
                       </div>
                       <div className="text-right">
                         <div className="text-espresso font-serif text-sm font-bold">
-                          {service.variablePrice ? 'A partir de' : ''} R$ {service.priceBase},00
+                          {formatModalServicePrice(service)}
                         </div>
                         {selectedService?.id === service.id && (
                           <span className="text-[10px] text-champagne-dark font-bold uppercase tracking-wider block mt-1">Selecionado</span>
@@ -413,11 +431,22 @@ export default function BookingModal({
                       }`}
                     >
                       <div className="flex items-center gap-3 mb-3">
-                        <div className="w-10 h-10 rounded-full bg-champagne-soft border border-champagne/40 flex items-center justify-center text-champagne-dark font-serif font-bold text-lg">
-                          {pro.name[0]}
+                        <div className="w-10 h-10 rounded-full bg-champagne-soft border border-champagne/40 flex items-center justify-center text-champagne-dark font-serif font-bold text-xs overflow-hidden shrink-0">
+                          {pro.photoUrl ? (
+                            <img src={pro.photoUrl} alt={pro.name} className="w-full h-full object-cover" />
+                          ) : (
+                            <span>{pro.name.split(' ').map(n => n[0]).join('').slice(0, 2)}</span>
+                          )}
                         </div>
                         <div>
-                          <h4 className="font-serif text-espresso font-bold">{pro.name}</h4>
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <h4 className="font-serif text-espresso font-bold">{pro.name}</h4>
+                            {(pro.specialtyBadge || pro.specialtyHighlight) && (
+                              <span className="text-[9px] px-1.5 py-0.5 bg-[#F8F1E4] text-[#70542D] border border-[#E6D4B8] rounded font-bold uppercase tracking-wider">
+                                {pro.specialtyBadge || pro.specialtyHighlight}
+                              </span>
+                            )}
+                          </div>
                           <span className="text-[10px] text-taupe uppercase font-semibold">{pro.role.split(',')[0]}</span>
                         </div>
                       </div>
@@ -542,6 +571,19 @@ export default function BookingModal({
                   <h4 className="text-sm uppercase tracking-wider text-champagne font-semibold mb-1">Confirme seus dados para finalizar</h4>
                   <p className="text-xs text-text-secondary">Resumo: <strong className="text-espresso">{selectedService?.name}</strong> em <strong className="text-espresso">{formatDateLabel(selectedDate)}</strong> às <strong className="text-espresso">{selectedTime}h</strong></p>
                 </div>
+
+                {selectedService?.recommendations && selectedService.recommendations.length > 0 && (
+                  <div className="bg-[#F8F1E4] border border-champagne/30 rounded-lg p-4 mb-6">
+                    <h5 className="text-xs font-bold text-champagne-dark flex items-center gap-2 mb-2 uppercase tracking-wide">
+                      <Sparkles size={14} /> Antes do seu atendimento
+                    </h5>
+                    <ul className="text-sm text-espresso space-y-1 list-disc list-inside">
+                      {selectedService.recommendations.map((rec, idx) => (
+                        <li key={idx}>{rec}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
 
                 <form onSubmit={handleSubmit} className="space-y-4">
                   {/* Name Input */}
@@ -685,12 +727,12 @@ export default function BookingModal({
                   </p>
                   <div className="flex flex-col gap-2 max-w-xs mx-auto">
                     <a
-                      href={getWhatsAppLink()}
+                      href={getWhatsAppDetails().whatsappUrl}
                       target="_blank"
                       rel="noreferrer"
                       className="w-full h-12 bg-[#25D366] hover:bg-[#20ba5a] text-white font-bold uppercase tracking-wider text-xs rounded-xl transition-colors flex items-center justify-center gap-2 shadow-md hover:shadow-lg"
                     >
-                      <Phone size={16} /> Confirmar no WhatsApp
+                      <Phone size={16} /> {getWhatsAppDetails().buttonLabel}
                     </a>
                     <button
                       onClick={() => {
