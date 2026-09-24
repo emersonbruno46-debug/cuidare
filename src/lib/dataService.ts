@@ -88,6 +88,10 @@ export function getProfessionals(): Professional[] {
         patch.whatsapp = seedPro.whatsapp;
         itemChanged = true;
       }
+      if (seedPro.photoUrl && existing.photoUrl !== seedPro.photoUrl) {
+        patch.photoUrl = seedPro.photoUrl;
+        itemChanged = true;
+      }
       if (seedPro.specialtyHighlight && existing.specialtyHighlight !== seedPro.specialtyHighlight) {
         patch.specialtyHighlight = seedPro.specialtyHighlight;
         itemChanged = true;

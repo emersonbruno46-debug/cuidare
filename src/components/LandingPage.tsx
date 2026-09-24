@@ -181,7 +181,7 @@ export default function LandingPage({ onOpenBooking, onNavigateToAdmin }: Landin
       >
         {/* Background Fachada (Soft integration) */}
         <div ref={heroImageRef} className="absolute inset-0 z-0">
-          <img src="/BACKGROUND HERO.png" alt="Fachada" className="w-full h-full object-cover opacity-40 mix-blend-multiply" />
+          <img src="/background-hero.webp" alt="Fachada" className="w-full h-full object-cover opacity-40 mix-blend-multiply" />
           <div className="absolute inset-0 bg-gradient-to-r from-ivory via-ivory/80 to-transparent lg:w-2/3" />
           <div className="absolute inset-0 bg-gradient-to-t from-ivory via-transparent to-transparent" />
         </div>
@@ -214,7 +214,7 @@ export default function LandingPage({ onOpenBooking, onNavigateToAdmin }: Landin
           <div className="lg:absolute lg:bottom-0 lg:right-[-2%] lg:h-[75%] xl:h-[80%] lg:w-[55%] flex items-end justify-center lg:justify-end mt-12 lg:mt-0 relative h-[450px] w-full z-0 pointer-events-none">
             <div className="relative h-full w-full flex items-end justify-center lg:justify-end hero-prof">
               <img 
-                src="/PROFISSIONAIS.png" 
+                src="/profissionais.webp" 
                 alt="Profissionais Cuidare" 
                 className="h-full w-auto max-w-none object-contain object-bottom origin-bottom mix-blend-multiply" 
                 style={{ objectPosition: 'right bottom' }}
@@ -258,7 +258,7 @@ export default function LandingPage({ onOpenBooking, onNavigateToAdmin }: Landin
             <div className="lg:w-[55%] order-1 lg:order-2 w-full concept-reveal">
               <div className="aspect-[4/5] sm:aspect-square lg:aspect-[4/5] w-full overflow-hidden bg-warm-surface relative">
                 <img 
-                  src="/BACKGROUND HERO.png" 
+                  src="/background-hero.webp" 
                   alt="Estrutura Cuidare" 
                   className="w-full h-full object-cover mix-blend-multiply opacity-90"
                 />
@@ -424,7 +424,7 @@ export default function LandingPage({ onOpenBooking, onNavigateToAdmin }: Landin
                       <img 
                         src={prof.photoUrl} 
                         alt={prof.name} 
-                        className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" 
+                        className="absolute inset-0 w-full h-full object-cover object-top transition-transform duration-500 group-hover:scale-105" 
                       />
                     ) : (
                       <>
