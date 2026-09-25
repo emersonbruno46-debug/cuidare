@@ -2,19 +2,20 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   X, User, MessageSquare, Check, Phone, Mail, 
-  ArrowLeft, ArrowRight, Search, Sparkles, MapPin
+  ArrowLeft, ArrowRight, Search, Sparkles, MapPin, AlertCircle
 } from 'lucide-react';
 import { services } from '../data/servicesData';
 import { professionals as defaultProfessionals } from '../data/professionalsData';
 import type { Service, Professional, Booking } from '../types';
-import { getAvailableSlots } from '../lib/availability';
+import { getAvailableSlots, findAvailableProfessionalForSlot } from '../lib/availability';
+import { buildWhatsAppLink } from '../lib/businessSettings';
 
 interface BookingModalProps {
   isOpen: boolean;
   onClose: () => void;
   initialService?: Service;
   existingBookings: Booking[];
-  onAddBooking: (booking: Booking) => void;
+  onAddBooking: (booking: Omit<Booking, 'id' | 'createdAt'>) => { booking: Booking | null; error?: string } | Promise<{ booking: Booking | null; error?: string }>;
   professionals?: Professional[];
 }
 
@@ -39,17 +40,34 @@ export default function BookingModal({
   const [clientNotes, setClientNotes] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategoryFilter, setSelectedCategoryFilter] = useState<string>('todos');
+  
+  // Submission & Error handling
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [savedBooking, setSavedBooking] = useState<Booking | null>(null);
 
   // Pre-select service if passed
   useEffect(() => {
     if (initialService) {
       setSelectedService(initialService);
-      setStep(2); // Go directly to professional step
+      setStep(2);
     } else {
       setSelectedService(null);
       setStep(1);
     }
+    setSubmitError(null);
   }, [initialService, isOpen]);
+
+  // Keyboard accessibility: Escape to close
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isOpen && step !== 5) {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, step, onClose]);
 
   if (!isOpen) return null;
 
@@ -80,9 +98,7 @@ export default function BookingModal({
       const nextDay = new Date(today);
       nextDay.setDate(today.getDate() + i);
       const dayOfWeek = nextDay.getDay(); // 0: Sun, 1: Mon, ... 6: Sat
-      
-      // Skip Mondays (closed) and Sundays (closed)
-      if (dayOfWeek !== 0 && dayOfWeek !== 1) {
+      if (dayOfWeek !== 0 && dayOfWeek !== 1) { // Closed Sun & Mon
         days.push(nextDay);
       }
     }
@@ -100,30 +116,27 @@ export default function BookingModal({
     eligibleProfessionals
   );
 
-  // Auto-allocate first available professional if needed
+  // Auto-allocate first available professional for slot checking full duration overlap
   const determineProfessional = (): Professional => {
     if (selectedProfessional) return selectedProfessional;
-    
-    // Find an eligible professional who is free at the selected date & time
-    const freePro = eligibleProfessionals.find(p => {
-      const isBooked = existingBookings.some(
-        b => b.date === selectedDate && 
-             b.time === selectedTime && 
-             b.professionalId === p.id &&
-             b.status !== 'cancelado'
-      );
-      return !isBooked;
-    });
+    if (!selectedService || !selectedDate || !selectedTime) return eligibleProfessionals[0];
+
+    const freePro = findAvailableProfessionalForSlot(
+      selectedDate,
+      selectedTime,
+      selectedService.duration,
+      eligibleProfessionals,
+      existingBookings
+    );
 
     return freePro || eligibleProfessionals[0];
   };
 
   const handleNextStep = () => {
+    setSubmitError(null);
     if (step === 1 && selectedService) {
-      // Find eligible pros. If only one, select her by default
-      const pros = activeProfessionals.filter(p => p.categories.includes(selectedService.category));
-      if (pros.length === 1) {
-        setSelectedProfessional(pros[0]);
+      if (eligibleProfessionals.length === 1) {
+        setSelectedProfessional(eligibleProfessionals[0]);
         setIsFirstAvailable(false);
       }
       setStep(2);
@@ -135,43 +148,61 @@ export default function BookingModal({
   };
 
   const handlePrevStep = () => {
+    setSubmitError(null);
     if (step === 2) {
-      // If we had initialService, closing or resetting goes to 1
       setStep(1);
     } else if (step > 1) {
       setStep(step - 1);
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setSubmitError(null);
+
     if (!selectedService || (!selectedProfessional && !isFirstAvailable) || !selectedDate || !selectedTime || !clientName || !clientPhone) {
+      setSubmitError('Por favor, preencha todos os campos obrigatórios.');
       return;
     }
 
     const pro = determineProfessional();
 
-    const newBooking: Booking = {
-      id: 'bk_' + Math.random().toString(36).substr(2, 9),
+    const newBookingData: Omit<Booking, 'id' | 'createdAt'> = {
       serviceId: selectedService.id,
       serviceName: selectedService.name,
       professionalId: pro.id,
       professionalName: pro.name,
       date: selectedDate,
       time: selectedTime,
-      clientName,
-      clientPhone,
-      clientEmail: clientEmail || undefined,
-      notes: clientNotes || undefined,
+      clientName: clientName.trim(),
+      clientPhone: clientPhone.trim(),
+      clientEmail: clientEmail.trim() || undefined,
+      notes: clientNotes.trim() || undefined,
       status: 'pendente',
       origin: 'site',
-      createdAt: new Date().toISOString(),
-      price: selectedService.priceBase, // standard price
+      price: selectedService.priceBase,
       duration: selectedService.duration
     };
 
-    onAddBooking(newBooking);
-    setStep(5); // Go to success confirmation screen
+    setIsSubmitting(true);
+
+    try {
+      const result = await onAddBooking(newBookingData);
+      setIsSubmitting(false);
+
+      if (result.error || !result.booking) {
+        setSubmitError(result.error || 'Não foi possível concluir o agendamento. Tente novamente.');
+        setSelectedTime(''); // Clear slot selection so user re-evaluates
+        return;
+      }
+
+      // Success: store saved booking and display confirmation ticket
+      setSavedBooking(result.booking);
+      setStep(5);
+    } catch {
+      setIsSubmitting(false);
+      setSubmitError('Ocorreu uma falha de conexão ao gravar o agendamento. Seus dados foram preservados. Tente novamente.');
+    }
   };
 
   const formatDateLabel = (dateString: string) => {
@@ -180,37 +211,35 @@ export default function BookingModal({
     return date.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' });
   };
 
-  // Pre-filled WhatsApp link builder per professional
+  // WhatsApp link details for step 5 confirmation
   const getWhatsAppDetails = () => {
-    if (!selectedService || !selectedDate || !selectedTime) {
-      return {
-        whatsappUrl: '#',
-        buttonLabel: 'Confirmar no WhatsApp',
-        proName: 'Profissional',
-        proFirstName: 'Profissional'
-      };
-    }
+    const bookingToUse = savedBooking || {
+      clientName,
+      serviceName: selectedService?.name ?? 'Atendimento',
+      professionalName: determineProfessional().name,
+      date: selectedDate,
+      time: selectedTime,
+      clientPhone
+    };
+
     const pro = determineProfessional();
-    const proName = pro.name;
-    const proFirstName = proName.split(' ')[0];
-    const proPhoneRaw = pro.whatsapp || '5538992380097';
-    const cleanPhone = proPhoneRaw.replace(/\D/g, '');
-    const finalPhone = cleanPhone.startsWith('55') ? cleanPhone : '55' + cleanPhone;
-    const formattedDate = new Date(selectedDate + 'T00:00:00').toLocaleDateString('pt-BR');
+    const formattedDate = bookingToUse.date
+      ? new Date(bookingToUse.date + 'T00:00:00').toLocaleDateString('pt-BR')
+      : '';
 
-    const message = `Olá, ${proName}! Acabei de realizar um agendamento pelo site da Cuidare.
+    const message = `Olá, ${bookingToUse.professionalName}! Acabei de realizar uma solicitação de agendamento pelo site da Cuidare.
 
-Nome: ${clientName}
-Serviço: ${selectedService.name}
+Nome: ${bookingToUse.clientName}
+Serviço: ${bookingToUse.serviceName}
 Data: ${formattedDate}
-Horário: ${selectedTime}
+Horário: ${bookingToUse.time}h
 
-Gostaria de confirmar meu agendamento.`;
+Gostaria de enviar este comprovante.`;
 
-    const whatsappUrl = `https://wa.me/${finalPhone}?text=${encodeURIComponent(message)}`;
-    const buttonLabel = `Falar com ${proFirstName} no WhatsApp`;
+    const whatsappUrl = buildWhatsAppLink(pro.whatsapp, message);
+    const buttonLabel = `Enviar comprovante no WhatsApp`;
 
-    return { whatsappUrl, buttonLabel, proName, proFirstName };
+    return { whatsappUrl, buttonLabel, proName: pro.name };
   };
 
   const formatModalServicePrice = (service: Service) => {
@@ -229,7 +258,6 @@ Gostaria de confirmar meu agendamento.`;
     return `R$ ${service.priceBase},00`;
   };
 
-  // Categories helper list for search step
   const categoriesList = [
     { id: 'todos', name: 'Todos' },
     { id: 'escovas', name: 'Escovas' },
@@ -244,11 +272,16 @@ Gostaria de confirmar meu agendamento.`;
   ];
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4">
+    <div 
+      className="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="booking-modal-title"
+    >
       {/* Overlay backdrop */}
       <div 
         className="fixed inset-0 bg-black/85 backdrop-blur-md transition-opacity" 
-        onClick={() => step !== 5 ? onClose() : null} 
+        onClick={() => step !== 5 && !isSubmitting ? onClose() : null} 
       />
 
       {/* Modal box */}
@@ -261,11 +294,16 @@ Gostaria de confirmar meu agendamento.`;
         {/* Header */}
         <div className="px-6 py-5 border-b border-border-subtle flex justify-between items-center bg-ivory">
           <div>
-            <h3 className="text-xl font-serif text-espresso tracking-wide">Agendar seu Horário</h3>
+            <h3 id="booking-modal-title" className="text-xl font-serif text-espresso tracking-wide">Agendar seu Horário</h3>
             <span className="text-[10px] text-taupe uppercase tracking-wider">Cuidare Espaço de Beleza</span>
           </div>
           {step !== 5 && (
-            <button onClick={onClose} className="text-text-secondary hover:text-champagne transition-colors">
+            <button 
+              onClick={onClose} 
+              disabled={isSubmitting}
+              className="text-text-secondary hover:text-champagne transition-colors p-1"
+              aria-label="Fechar modal"
+            >
               <X size={20} />
             </button>
           )}
@@ -293,7 +331,7 @@ Gostaria de confirmar meu agendamento.`;
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -12 }}
                 transition={{ duration: 0.25, ease: "easeOut" }}
-                className="space-y-6 animate-fade-in"
+                className="space-y-6"
               >
                 <div className="flex flex-col sm:flex-row gap-4 items-center justify-between">
                   <div className="relative w-full sm:w-72">
@@ -409,7 +447,7 @@ Gostaria de confirmar meu agendamento.`;
                     </div>
                     <div>
                       <h4 className="font-serif text-espresso font-bold">Primeira Profissional Disponível</h4>
-                      <p className="text-text-secondary text-xs mt-0.5">Encontre o horário mais próximo disponível</p>
+                      <p className="text-text-secondary text-xs mt-0.5">Encontre o horário mais próximo disponível entre a equipe elegível</p>
                     </div>
                   </div>
                   {isFirstAvailable && <Check className="text-champagne-dark" size={20} />}
@@ -504,7 +542,8 @@ Gostaria de confirmar meu agendamento.`;
                           key={dateString}
                           onClick={() => {
                             setSelectedDate(dateString);
-                            setSelectedTime(''); // Reset hour selection
+                            setSelectedTime('');
+                            setSubmitError(null);
                           }}
                           className={`flex flex-col items-center justify-center p-3 rounded-xl border min-w-[72px] transition-all duration-200 ${
                             isSelected 
@@ -536,7 +575,10 @@ Gostaria de confirmar meu agendamento.`;
                           return (
                             <button
                               key={time}
-                              onClick={() => setSelectedTime(time)}
+                              onClick={() => {
+                                setSelectedTime(time);
+                                setSubmitError(null);
+                              }}
                               className={`h-11 rounded-lg border text-sm font-semibold transition-all duration-200 ${
                                 isSelected 
                                   ? 'bg-espresso text-white border-espresso shadow-lg scale-[1.03]' 
@@ -572,6 +614,13 @@ Gostaria de confirmar meu agendamento.`;
                   <p className="text-xs text-text-secondary">Resumo: <strong className="text-espresso">{selectedService?.name}</strong> em <strong className="text-espresso">{formatDateLabel(selectedDate)}</strong> às <strong className="text-espresso">{selectedTime}h</strong></p>
                 </div>
 
+                {submitError && (
+                  <div className="bg-red-50 border border-red-200 text-red-700 p-4 rounded-xl mb-4 text-xs font-semibold flex items-start gap-2">
+                    <AlertCircle size={16} className="shrink-0 mt-0.5" />
+                    <div>{submitError}</div>
+                  </div>
+                )}
+
                 {selectedService?.recommendations && selectedService.recommendations.length > 0 && (
                   <div className="bg-[#F8F1E4] border border-champagne/30 rounded-lg p-4 mb-6">
                     <h5 className="text-xs font-bold text-champagne-dark flex items-center gap-2 mb-2 uppercase tracking-wide">
@@ -604,7 +653,7 @@ Gostaria de confirmar meu agendamento.`;
 
                   {/* WhatsApp Input */}
                   <div>
-                    <label className="block text-xs uppercase tracking-wider text-text-secondary font-semibold mb-1">WhatsApp para Lembretes *</label>
+                    <label className="block text-xs uppercase tracking-wider text-text-secondary font-semibold mb-1">WhatsApp para Contato *</label>
                     <div className="relative">
                       <input 
                         type="tel" 
@@ -616,7 +665,7 @@ Gostaria de confirmar meu agendamento.`;
                       />
                       <Phone size={16} className="absolute left-3.5 top-3.5 text-taupe" />
                     </div>
-                    <span className="text-[10px] text-gray-500 mt-1.5 block">Enviaremos lembretes automáticos de confirmação 24h antes do serviço.</span>
+                    <span className="text-[10px] text-gray-500 mt-1.5 block">Enviaremos informações de confirmação e detalhes pelo WhatsApp.</span>
                   </div>
 
                   {/* Email Input */}
@@ -641,7 +690,7 @@ Gostaria de confirmar meu agendamento.`;
                       <textarea 
                         value={clientNotes}
                         onChange={(e) => setClientNotes(e.target.value)}
-                        placeholder="Comprimento do cabelo, químicas anteriores, sensibilidades capilares, ou observações..."
+                        placeholder="Comprimento do cabelo, químicas anteriores, sensabilidades capilares, ou observações..."
                         rows={3}
                         className="w-full p-3.5 pl-10 bg-ivory border border-border-subtle focus:border-champagne focus:bg-paper rounded-xl text-sm text-espresso focus:outline-none transition-colors resize-none"
                       />
@@ -649,7 +698,6 @@ Gostaria de confirmar meu agendamento.`;
                     </div>
                   </div>
 
-                  {/* Submit Button */}
                   <button 
                     type="submit"
                     className="hidden" 
@@ -668,48 +716,54 @@ Gostaria de confirmar meu agendamento.`;
                 transition={{ duration: 0.25, ease: "easeOut" }}
                 className="text-center py-6 space-y-6"
               >
-                <div className="w-16 h-16 rounded-full bg-sage-soft text-sage flex items-center justify-center mx-auto shadow-lg shadow-sage/10 animate-bounce border border-sage/20">
+                <div className="w-16 h-16 rounded-full bg-sage-soft text-sage flex items-center justify-center mx-auto shadow-lg shadow-sage/10 border border-sage/20">
                   <Check size={32} strokeWidth={3} />
                 </div>
 
                 <div className="space-y-2">
-                  <h3 className="text-2xl font-serif text-espresso tracking-wide font-bold">Agendamento Realizado!</h3>
-                  <p className="text-sm text-champagne-dark font-semibold">Seu horário foi reservado com sucesso no salão.</p>
+                  <h3 className="text-2xl font-serif text-espresso tracking-wide font-bold">
+                    {savedBooking?.status === 'confirmado' ? 'Agendamento Confirmado!' : 'Solicitação Recebida!'}
+                  </h3>
+                  <p className="text-sm text-champagne-dark font-semibold">
+                    {savedBooking?.status === 'confirmado' 
+                      ? 'Seu horário foi confirmado com sucesso no sistema.' 
+                      : 'Sua solicitação de agendamento foi registrada no sistema.'}
+                  </p>
                 </div>
 
                 {/* Receipt ticket summary */}
                 <div className="bg-ivory p-5 rounded-xl max-w-sm mx-auto text-left space-y-3.5 border border-dashed border-border-strong relative shadow-sm">
-                  {/* Decorative ticket notch left */}
                   <div className="absolute w-4 h-8 bg-paper border-r border-border-subtle rounded-r-full -left-1.5 top-1/2 -translate-y-1/2" />
-                  {/* Decorative ticket notch right */}
                   <div className="absolute w-4 h-8 bg-paper border-l border-border-subtle rounded-l-full -right-1.5 top-1/2 -translate-y-1/2" />
 
                   <div className="flex justify-between items-center pb-2 border-b border-border-subtle">
-                    <span className="text-[10px] text-gray-500 uppercase tracking-widest font-semibold">Cuidare Recibo</span>
-                    <span className="text-[10px] text-sage font-bold uppercase">Confirmado</span>
+                    <span className="text-[10px] text-gray-500 uppercase tracking-widest font-semibold">Cuidare Comprovante</span>
+                    <span className="text-[10px] text-sage font-bold uppercase">
+                      {savedBooking?.status === 'confirmado' ? 'Confirmado' : 'Registrado'}
+                    </span>
                   </div>
 
                   <div className="text-xs space-y-2 text-text-secondary">
                     <div>
                       <span className="text-gray-500 block text-[9px] uppercase font-bold">Cliente:</span>
-                      <span className="font-semibold text-espresso">{clientName}</span>
+                      <span className="font-semibold text-espresso">{savedBooking?.clientName || clientName}</span>
                     </div>
                     <div>
                       <span className="text-gray-500 block text-[9px] uppercase font-bold">Serviço:</span>
-                      <span className="font-semibold text-espresso">{selectedService?.name}</span>
+                      <span className="font-semibold text-espresso">{savedBooking?.serviceName || selectedService?.name}</span>
                     </div>
                     <div>
                       <span className="text-gray-500 block text-[9px] uppercase font-bold">Profissional Habilitada:</span>
-                      <span className="font-semibold text-espresso">{determineProfessional().name}</span>
+                      <span className="font-semibold text-espresso">{savedBooking?.professionalName || determineProfessional().name}</span>
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                       <div>
                         <span className="text-gray-500 block text-[9px] uppercase font-bold">Data:</span>
-                        <span className="font-semibold text-espresso">{formatDateLabel(selectedDate).split('-')[0]}</span>
+                        <span className="font-semibold text-espresso">{formatDateLabel(savedBooking?.date || selectedDate)}</span>
                       </div>
                       <div>
                         <span className="text-gray-500 block text-[9px] uppercase font-bold">Horário:</span>
-                        <span className="font-semibold text-espresso">{selectedTime}h</span>
+                        <span className="font-semibold text-espresso">{savedBooking?.time || selectedTime}h</span>
                       </div>
                     </div>
                     <div>
@@ -723,7 +777,7 @@ Gostaria de confirmar meu agendamento.`;
 
                 <div className="space-y-4">
                   <p className="text-xs text-text-secondary max-w-sm mx-auto leading-relaxed">
-                    Você também receberá um lembrete automático 24h antes do seu atendimento. Clique no botão abaixo para enviar os detalhes no WhatsApp do salão e confirmar sua presença imediatamente.
+                    Você pode enviar os detalhes deste agendamento para o WhatsApp da profissional ou da recepcionista para facilitar a comunicação.
                   </p>
                   <div className="flex flex-col gap-2 max-w-xs mx-auto">
                     <a
@@ -746,6 +800,8 @@ Gostaria de confirmar meu agendamento.`;
                         setClientPhone('');
                         setClientEmail('');
                         setClientNotes('');
+                        setSubmitError(null);
+                        setSavedBooking(null);
                       }}
                       className="w-full h-11 border border-border-strong hover:border-champagne hover:bg-champagne/10 text-espresso text-xs font-semibold uppercase tracking-wider rounded-xl transition-all"
                     >
@@ -764,9 +820,9 @@ Gostaria de confirmar meu agendamento.`;
           <div className="px-6 py-4 border-t border-border-subtle bg-warm-sand flex justify-between items-center">
             <button
               onClick={handlePrevStep}
-              disabled={step === 1 && !initialService}
+              disabled={(step === 1 && !initialService) || isSubmitting}
               className={`flex items-center gap-2 text-xs font-semibold uppercase tracking-wider transition-colors ${
-                step === 1 && !initialService
+                (step === 1 && !initialService) || isSubmitting
                   ? 'text-gray-400 cursor-not-allowed'
                   : 'text-text-secondary hover:text-espresso'
               }`}
@@ -798,9 +854,10 @@ Gostaria de confirmar meu agendamento.`;
                   const formBtn = document.getElementById('submit-booking-form-btn');
                   if (formBtn) formBtn.click();
                 }}
-                className={`px-6 py-2.5 bg-espresso text-ivory font-bold uppercase tracking-wider text-xs rounded-lg hover:shadow-lg hover:shadow-black/10 hover:bg-[#3B2B24] active:scale-95 transition-all`}
+                disabled={isSubmitting}
+                className="px-6 py-2.5 bg-espresso text-ivory font-bold uppercase tracking-wider text-xs rounded-lg hover:shadow-lg hover:shadow-black/10 hover:bg-[#3B2B24] active:scale-95 disabled:opacity-50 transition-all flex items-center gap-2"
               >
-                Concluir Agendamento
+                {isSubmitting ? 'Salvando...' : 'Concluir Agendamento'}
               </button>
             )}
           </div>

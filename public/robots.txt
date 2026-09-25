@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /colaboradora
+Disallow: /acesso
+
+Sitemap: https://cuidare-sigma.vercel.app/sitemap.xml

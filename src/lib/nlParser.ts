@@ -20,7 +20,7 @@ const MONTHS: Record<string, number> = {
 function normalizeText(str: string): string {
   return str.toLowerCase()
     .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
-    .replace(/[^a-z0-9\s:\/\-]/g, ' ')
+    .replace(/[^a-z0-9\s:/-]/g, ' ')
     .replace(/\s+/g, ' ').trim();
 }
 
@@ -185,7 +185,7 @@ function findService(text: string): { serviceId: string; serviceName: string; ra
 
 /** Extract phone number */
 function findPhone(text: string): string | null {
-  const match = text.match(/(?:\+?55\s?)?(?:\(?\d{2}\)?\s?)?\d{4,5}[\s\-]?\d{4}/);
+  const match = text.match(/(?:\+?55\s?)?(?:\(?\d{2}\)?\s?)?\d{4,5}[\s-]?\d{4}/);
   return match ? match[0].trim() : null;
 }
 

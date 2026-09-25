@@ -1,17 +1,19 @@
 // ─────────────────────────────────────────────
 // CUIDARE — AppointmentModal
-// Modal completo de detalhes e ações do agendamento
+// Modal completo de detalhes, remarcação e ações do agendamento
 // ─────────────────────────────────────────────
 
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   X, Phone, Edit2, Trash2, Check, XCircle, UserX,
-  Clock, Calendar, User, MessageSquare, AlertTriangle
+  Clock, Calendar, User, MessageSquare, AlertTriangle, RefreshCw, History
 } from 'lucide-react';
 import type { Booking, BookingStatus, AuthUser } from '../../types';
-import { updateBooking, deleteBooking } from '../../lib/dataService';
+import { updateBooking, deleteBooking, rescheduleBooking, getProfessionals, getBookings } from '../../lib/dataService';
 import { buildWhatsAppLink } from '../../lib/businessSettings';
+import { services } from '../../data/servicesData';
+import { getAvailableSlots } from '../../lib/availability';
 
 interface AppointmentModalProps {
   booking: Booking | null;
@@ -29,10 +31,19 @@ const STATUS_OPTIONS: { value: BookingStatus; label: string; color: string }[] =
 ];
 
 export default function AppointmentModal({ booking, onClose, onUpdated, currentUser }: AppointmentModalProps) {
-  const [mode, setMode] = useState<'view' | 'edit' | 'confirmDelete'>('view');
+  const [mode, setMode] = useState<'view' | 'edit' | 'reschedule' | 'confirmDelete'>('view');
+  
+  // Edit state
   const [editNotes, setEditNotes] = useState(booking?.notes ?? '');
   const [editStatus, setEditStatus] = useState<BookingStatus>(booking?.status ?? 'pendente');
   const [editPrice, setEditPrice] = useState(String(booking?.price ?? ''));
+
+  // Reschedule state
+  const [rescheduleDate, setRescheduleDate] = useState(booking?.date ?? '');
+  const [rescheduleTime, setRescheduleTime] = useState(booking?.time ?? '');
+  const [rescheduleProId, setRescheduleProId] = useState(booking?.professionalId ?? '');
+  const [rescheduleReason, setRescheduleReason] = useState('');
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -40,6 +51,23 @@ export default function AppointmentModal({ booking, onClose, onUpdated, currentU
 
   const isAdmin = currentUser.role === 'admin';
   const canEdit = isAdmin || currentUser.professionalId === booking.professionalId;
+  const professionals = getProfessionals().filter(p => p.active !== false);
+  const serviceObj = services.find(s => s.id === booking.serviceId);
+
+  // Filter eligible professionals for rescheduling
+  const eligibleProfessionals = serviceObj
+    ? professionals.filter(p => {
+        if (serviceObj.professionalIds && serviceObj.professionalIds.length > 0) {
+          return serviceObj.professionalIds.includes(p.id);
+        }
+        return p.categories.includes(serviceObj.category);
+      })
+    : professionals;
+
+  // Available slots for reschedule date
+  const availableRescheduleSlots = rescheduleDate && rescheduleProId
+    ? getAvailableSlots(rescheduleDate, rescheduleProId, booking.duration, getBookings(), eligibleProfessionals)
+    : [];
 
   const statusInfo = STATUS_OPTIONS.find(s => s.value === booking.status);
 
@@ -48,15 +76,17 @@ export default function AppointmentModal({ booking, onClose, onUpdated, currentU
       weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
     });
 
-  const handleSave = async () => {
+  const handleSaveEdit = async () => {
     if (!canEdit) return;
     setLoading(true);
     setError('');
+
     const result = updateBooking(booking.id, {
       notes: editNotes || undefined,
       status: editStatus,
       price: parseFloat(editPrice) || booking.price
     });
+
     setLoading(false);
     if (result.error) {
       setError(result.error);
@@ -68,12 +98,43 @@ export default function AppointmentModal({ booking, onClose, onUpdated, currentU
 
   const handleStatusChange = (status: BookingStatus) => {
     setLoading(true);
+    setError('');
     const result = updateBooking(booking.id, { status });
     setLoading(false);
     if (result.error) {
       setError(result.error);
     } else {
       onUpdated();
+    }
+  };
+
+  const handleExecuteReschedule = () => {
+    if (!rescheduleDate || !rescheduleTime || !rescheduleProId) {
+      setError('Preencha data, horário e profissional.');
+      return;
+    }
+    if (!rescheduleReason || rescheduleReason.trim().length < 3) {
+      setError('Informe o motivo da remarcação (mínimo 3 caracteres).');
+      return;
+    }
+
+    setLoading(true);
+    setError('');
+
+    const result = rescheduleBooking(booking.id, {
+      newDate: rescheduleDate,
+      newTime: rescheduleTime,
+      newProfessionalId: rescheduleProId,
+      reason: rescheduleReason
+    });
+
+    setLoading(false);
+
+    if (result.error) {
+      setError(result.error);
+    } else {
+      onUpdated();
+      setMode('view');
     }
   };
 
@@ -90,7 +151,12 @@ export default function AppointmentModal({ booking, onClose, onUpdated, currentU
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+      <div 
+        className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="appointment-modal-title"
+      >
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -108,14 +174,14 @@ export default function AppointmentModal({ booking, onClose, onUpdated, currentU
           {/* Header */}
           <div className="flex items-start justify-between p-5 border-b border-[rgba(37,27,23,0.09)] shrink-0">
             <div>
-              <h3 className="font-semibold text-[#29231F] text-base">{booking.clientName}</h3>
+              <h3 id="appointment-modal-title" className="font-semibold text-[#29231F] text-base">{booking.clientName}</h3>
               <p className="text-xs text-[#7C736D] mt-0.5">{booking.serviceName} · {booking.duration}min</p>
             </div>
             <div className="flex items-center gap-2">
               <span className={`text-[10px] px-2 py-1 rounded border font-bold uppercase ${statusInfo?.color}`}>
                 {statusInfo?.label}
               </span>
-              <button onClick={onClose} className="p-1.5 hover:bg-gray-100 rounded-md transition-colors">
+              <button onClick={onClose} className="p-1.5 hover:bg-gray-100 rounded-md transition-colors" aria-label="Fechar">
                 <X size={16} />
               </button>
             </div>
@@ -123,6 +189,13 @@ export default function AppointmentModal({ booking, onClose, onUpdated, currentU
 
           {/* Content */}
           <div className="p-5 space-y-4 overflow-y-auto flex-1">
+            {error && (
+              <div className="bg-red-50 border border-red-200 text-red-700 p-3 rounded-lg text-xs font-semibold flex items-center gap-2">
+                <AlertTriangle size={15} className="shrink-0" />
+                <span>{error}</span>
+              </div>
+            )}
+
             {mode === 'confirmDelete' ? (
               <div className="text-center space-y-4 py-4">
                 <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center mx-auto">
@@ -130,7 +203,7 @@ export default function AppointmentModal({ booking, onClose, onUpdated, currentU
                 </div>
                 <div>
                   <h4 className="font-semibold text-[#29231F]">Remover agendamento?</h4>
-                  <p className="text-sm text-[#7C736D] mt-1">Esta ação não pode ser desfeita.</p>
+                  <p className="text-sm text-[#7C736D] mt-1">Esta ação remove permanentemente o registro.</p>
                 </div>
                 <div className="flex gap-3 justify-center">
                   <button onClick={() => setMode('view')} className="px-5 py-2.5 border border-gray-200 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors">
@@ -138,6 +211,87 @@ export default function AppointmentModal({ booking, onClose, onUpdated, currentU
                   </button>
                   <button onClick={handleDelete} className="px-5 py-2.5 bg-red-600 text-white rounded-lg text-sm font-semibold hover:bg-red-700 transition-colors">
                     Remover
+                  </button>
+                </div>
+              </div>
+            ) : mode === 'reschedule' ? (
+              <div className="space-y-4">
+                <div className="bg-[#F8F1E4] border border-champagne/30 rounded-lg p-3 text-xs text-champagne-dark font-semibold">
+                  🔄 Remarcação de Agendamento (ID mantido: {booking.id})
+                </div>
+
+                <div>
+                  <label className="block text-[11px] uppercase tracking-wider font-semibold text-[#756B65] mb-1">Profissional Elegível *</label>
+                  <select
+                    value={rescheduleProId}
+                    onChange={e => { setRescheduleProId(e.target.value); setRescheduleTime(''); }}
+                    className="w-full h-10 px-3 border border-[rgba(37,27,23,0.12)] rounded-lg text-sm focus:outline-none focus:border-[#C7A15D]"
+                  >
+                    {eligibleProfessionals.map(p => (
+                      <option key={p.id} value={p.id}>{p.name}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-[11px] uppercase tracking-wider font-semibold text-[#756B65] mb-1">Nova Data *</label>
+                  <input
+                    type="date"
+                    value={rescheduleDate}
+                    onChange={e => { setRescheduleDate(e.target.value); setRescheduleTime(''); }}
+                    className="w-full h-10 px-3 border border-[rgba(37,27,23,0.12)] rounded-lg text-sm focus:outline-none focus:border-[#C7A15D]"
+                  />
+                </div>
+
+                {rescheduleDate && rescheduleProId && (
+                  <div>
+                    <label className="block text-[11px] uppercase tracking-wider font-semibold text-[#756B65] mb-1.5">
+                      Novo Horário *
+                      {availableRescheduleSlots.length === 0 && <span className="text-red-500 ml-1">(Sem slots disponíveis)</span>}
+                    </label>
+                    {availableRescheduleSlots.length > 0 ? (
+                      <div className="grid grid-cols-4 sm:grid-cols-5 gap-2">
+                        {availableRescheduleSlots.map(slot => (
+                          <button
+                            key={slot}
+                            type="button"
+                            onClick={() => setRescheduleTime(slot)}
+                            className={`h-9 text-xs font-semibold rounded-lg border transition-all ${
+                              rescheduleTime === slot
+                                ? 'bg-[#251B17] text-white border-[#251B17]'
+                                : 'bg-white text-[#29231F] border-[rgba(37,27,23,0.12)] hover:border-[#C7A15D]'
+                            }`}
+                          >
+                            {slot}
+                          </button>
+                        ))}
+                      </div>
+                    ) : (
+                      <input
+                        type="time"
+                        value={rescheduleTime}
+                        onChange={e => setRescheduleTime(e.target.value)}
+                        className="w-full h-10 px-3 border border-[rgba(37,27,23,0.12)] rounded-lg text-sm focus:outline-none focus:border-[#C7A15D]"
+                      />
+                    )}
+                  </div>
+                )}
+
+                <div>
+                  <label className="block text-[11px] uppercase tracking-wider font-semibold text-[#756B65] mb-1">Motivo da Remarcação *</label>
+                  <textarea
+                    value={rescheduleReason}
+                    onChange={e => setRescheduleReason(e.target.value)}
+                    rows={2}
+                    placeholder="Ex: Pedido da cliente por imprevisto..."
+                    className="w-full p-3 border border-[rgba(37,27,23,0.12)] rounded-lg text-sm focus:outline-none focus:border-[#C7A15D] resize-none"
+                  />
+                </div>
+
+                <div className="flex gap-2 pt-2">
+                  <button onClick={() => setMode('view')} className="flex-1 h-10 border border-gray-200 rounded-lg text-sm font-medium hover:bg-gray-50">Cancelar</button>
+                  <button onClick={handleExecuteReschedule} disabled={loading} className="flex-1 h-10 bg-[#251B17] text-white rounded-lg text-sm font-semibold hover:bg-[#1a120e] disabled:opacity-60">
+                    {loading ? 'Remarcando...' : 'Confirmar Remarcação'}
                   </button>
                 </div>
               </div>
@@ -159,6 +313,7 @@ export default function AppointmentModal({ booking, onClose, onUpdated, currentU
                     type="number"
                     value={editPrice}
                     onChange={e => setEditPrice(e.target.value)}
+                    min={0}
                     className="w-full h-10 px-3 border border-[rgba(37,27,23,0.12)] rounded-lg text-sm focus:outline-none focus:border-[#C7A15D]"
                   />
                 </div>
@@ -172,11 +327,10 @@ export default function AppointmentModal({ booking, onClose, onUpdated, currentU
                     placeholder="Observações sobre o atendimento..."
                   />
                 </div>
-                {error && <p className="text-xs text-red-600">{error}</p>}
                 <div className="flex gap-2">
                   <button onClick={() => setMode('view')} className="flex-1 h-10 border border-gray-200 rounded-lg text-sm font-medium hover:bg-gray-50">Cancelar</button>
-                  <button onClick={handleSave} disabled={loading} className="flex-1 h-10 bg-[#251B17] text-white rounded-lg text-sm font-semibold hover:bg-[#1a120e] disabled:opacity-60">
-                    {loading ? 'Salvando...' : 'Salvar'}
+                  <button onClick={handleSaveEdit} disabled={loading} className="flex-1 h-10 bg-[#251B17] text-white rounded-lg text-sm font-semibold hover:bg-[#1a120e] disabled:opacity-60">
+                    {loading ? 'Salvando...' : 'Salvar Alterações'}
                   </button>
                 </div>
               </div>
@@ -207,11 +361,32 @@ export default function AppointmentModal({ booking, onClose, onUpdated, currentU
                     </div>
                   </div>
                   <div className="pt-2 border-t border-[rgba(37,27,23,0.06)] text-[10px] text-[#7C736D] space-y-0.5">
-                    <p>Origem: {booking.origin} · Criado por: {booking.createdByName ?? 'Sistema'}</p>
+                    <p>ID: {booking.id} · Origem: {booking.origin} · Criado por: {booking.createdByName ?? 'Sistema'}</p>
                     <p>Em: {new Date(booking.createdAt).toLocaleString('pt-BR')}</p>
                     {booking.updatedAt && <p>Atualizado em: {new Date(booking.updatedAt).toLocaleString('pt-BR')} por {booking.updatedByName}</p>}
                   </div>
                 </div>
+
+                {/* Reschedule history log if present */}
+                {booking.rescheduleHistory && booking.rescheduleHistory.length > 0 && (
+                  <div className="pt-3 border-t border-[rgba(37,27,23,0.08)] space-y-2">
+                    <h5 className="text-xs font-semibold text-[#7C736D] uppercase tracking-wider flex items-center gap-1.5">
+                      <History size={13} className="text-[#C7A15D]" /> Histórico de Remarcações ({booking.rescheduleHistory.length})
+                    </h5>
+                    <div className="space-y-1.5 max-h-32 overflow-y-auto">
+                      {booking.rescheduleHistory.map((h, i) => (
+                        <div key={i} className="bg-gray-50 p-2.5 rounded-lg border border-gray-200 text-xs space-y-1">
+                          <div className="flex justify-between font-semibold text-[#29231F]">
+                            <span>De: {h.previousDate} {h.previousTime}h ({h.previousProfessionalName})</span>
+                            <span>Para: {h.newDate} {h.newTime}h</span>
+                          </div>
+                          <p className="text-gray-600 italic">"Motivo: {h.reason}"</p>
+                          <p className="text-[10px] text-gray-400">Em: {new Date(h.changedAt).toLocaleString('pt-BR')} por {h.changedByName ?? 'Usuário'}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 {/* Quick status actions */}
                 {canEdit && booking.status === 'pendente' && (
@@ -250,11 +425,32 @@ export default function AppointmentModal({ booking, onClose, onUpdated, currentU
               {canEdit && (
                 <>
                   <button
-                    onClick={() => { setEditNotes(booking.notes ?? ''); setEditStatus(booking.status); setEditPrice(String(booking.price)); setMode('edit'); }}
+                    onClick={() => {
+                      setRescheduleDate(booking.date);
+                      setRescheduleTime(booking.time);
+                      setRescheduleProId(booking.professionalId);
+                      setRescheduleReason('');
+                      setError('');
+                      setMode('reschedule');
+                    }}
+                    className="flex items-center gap-1.5 px-3 py-2 bg-[#F1E6D0] text-[#70542D] border border-[#E6D4B8] rounded-lg text-xs font-semibold hover:bg-[#e4d4b7] transition-colors"
+                  >
+                    <RefreshCw size={13} /> Remarcar
+                  </button>
+
+                  <button
+                    onClick={() => { 
+                      setEditNotes(booking.notes ?? ''); 
+                      setEditStatus(booking.status); 
+                      setEditPrice(String(booking.price)); 
+                      setError('');
+                      setMode('edit'); 
+                    }}
                     className="flex items-center gap-1.5 px-3 py-2 bg-[#F1EBE4] text-[#29231F] rounded-lg text-xs font-semibold hover:bg-[#E8DED2] transition-colors"
                   >
                     <Edit2 size={13} /> Editar
                   </button>
+
                   {booking.status !== 'cancelado' && (
                     <button
                       onClick={() => handleStatusChange('cancelado')}
@@ -263,6 +459,7 @@ export default function AppointmentModal({ booking, onClose, onUpdated, currentU
                       <XCircle size={13} /> Cancelar
                     </button>
                   )}
+
                   <button
                     onClick={() => setMode('confirmDelete')}
                     className="flex items-center gap-1.5 px-3 py-2 bg-red-50 text-red-700 rounded-lg text-xs font-semibold hover:bg-red-100 transition-colors ml-auto"

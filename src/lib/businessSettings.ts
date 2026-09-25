@@ -26,6 +26,8 @@ const DEFAULT_SETTINGS: BusinessSettings = {
     { dayOfWeek: 6, open: '08:00', close: '18:00', closed: false }, // Saturday
   ],
   commissionDefaultRate: 0.5,
+  minLeadTimeMinutes: 30,
+  maxAdvanceDays: 30,
   updatedAt: new Date().toISOString()
 };
 
@@ -49,12 +51,30 @@ export function updateBusinessSettings(updates: Partial<BusinessSettings>): Busi
   return updated;
 }
 
-/** Build wa.me link for a professional or fallback to general */
+/** Normalize Brazilian phone to E.164 without duplicating country code 55 */
+export function normalizeBrazilianPhone(phone: string | undefined): string {
+  if (!phone) return '';
+  const digits = phone.replace(/\D/g, '');
+  if (!digits) return '';
+
+  // If already starts with 55 and has 12 or 13 digits (55 + 2-digit DDD + 8 or 9 digits)
+  if (digits.startsWith('55') && (digits.length === 12 || digits.length === 13)) {
+    return digits;
+  }
+
+  // If 10 or 11 digits (2-digit DDD + 8 or 9 digits), prepend 55
+  if (digits.length === 10 || digits.length === 11) {
+    return '55' + digits;
+  }
+
+  return digits;
+}
+
+/** Build wa.me link for a professional or fallback to general business WhatsApp */
 export function buildWhatsAppLink(phone: string | undefined, message: string): string {
   const settings = getBusinessSettings();
-  const number = phone ?? settings.businessWhatsapp;
-  if (!number) return '';
-  const clean = number.replace(/\D/g, '');
+  const rawNumber = phone || settings.businessWhatsapp;
+  const clean = normalizeBrazilianPhone(rawNumber);
   if (!clean) return '';
   return `https://wa.me/${clean}?text=${encodeURIComponent(message)}`;
 }
@@ -83,6 +103,7 @@ export function buildBookingWhatsAppMessage(data: {
     `Telefone: ${data.clientPhone}` +
     (data.notes ? `\nObservações: ${data.notes}` : '');
 
-  const phone = data.professionalWhatsapp ?? settings.businessWhatsapp;
+  const phone = data.professionalWhatsapp || settings.businessWhatsapp;
   return buildWhatsAppLink(phone, msg);
 }
+

@@ -49,7 +49,7 @@ export interface Professional {
   name: string;
   role: string;
   categories: ServiceCategory[];
-  photoUrl?: string; // Storage URL ou undefined enquanto aguarda foto real
+  photoUrl?: string; // Storage URL ou undefined
   bio: string;
   specialties: string[];
   specialtyHighlight?: string;
@@ -63,6 +63,21 @@ export interface Professional {
 
 export type BookingStatus = 'pendente' | 'confirmado' | 'concluido' | 'faltou' | 'cancelado';
 export type BookingOrigin = 'site' | 'manual_admin' | 'manual_colaboradora' | 'whatsapp' | 'presencial';
+
+export interface RescheduleEntry {
+  previousDate: string;
+  previousTime: string;
+  previousProfessionalId: string;
+  previousProfessionalName: string;
+  newDate: string;
+  newTime: string;
+  newProfessionalId: string;
+  newProfessionalName: string;
+  reason: string;
+  changedAt: string;
+  changedBy?: string;
+  changedByName?: string;
+}
 
 export interface Booking {
   id: string;
@@ -81,6 +96,8 @@ export interface Booking {
   notes?: string;
   status: BookingStatus;
   price: number;
+  commissionRate?: number; // Rate preserved at time of completion (e.g. 0.5)
+  commissionAmount?: number; // Calculated commission preserved at time of completion
   paymentStatus?: 'pendente' | 'pago' | 'parcial';
   paymentMethod?: string;
   origin: BookingOrigin;
@@ -90,6 +107,8 @@ export interface Booking {
   updatedByName?: string;
   createdAt: string; // ISO
   updatedAt?: string; // ISO
+  rescheduleHistory?: RescheduleEntry[];
+  cancelReason?: string;
 }
 
 export interface Client {
@@ -116,6 +135,8 @@ export interface ClientHistoryEntry {
   professionalName: string;
   date: string; // YYYY-MM-DD
   price: number;
+  commissionRate?: number;
+  commissionAmount?: number;
   status: BookingStatus;
   notes?: string;
   origin: BookingOrigin;
@@ -168,6 +189,8 @@ export interface BusinessSettings {
     breakEnd?: string;
   }[];
   commissionDefaultRate: number; // 0–1
+  minLeadTimeMinutes: number; // e.g. 30
+  maxAdvanceDays: number; // e.g. 30
   updatedAt: string;
 }
 
@@ -180,7 +203,6 @@ export interface StaffAccount {
   active: boolean;
   createdAt: string;
   lastLogin?: string;
-  // password stored hashed in mock, never exposed
   passwordHash?: string;
 }
 
@@ -197,6 +219,21 @@ export interface AuditLog {
   createdAt: string;
 }
 
+export interface NotificationJob {
+  id: string;
+  bookingId: string;
+  recipientPhone: string;
+  recipientName: string;
+  message: string;
+  type: 'booking_created' | 'booking_rescheduled' | 'booking_cancelled' | 'reminder_24h';
+  scheduledFor: string; // ISO
+  status: 'pending' | 'sent' | 'failed' | 'cancelled';
+  attempts: number;
+  lastAttemptAt?: string;
+  error?: string;
+  createdAt: string;
+}
+
 export interface ParsedBookingMessage {
   clientName?: string;
   clientPhone?: string;
@@ -207,7 +244,8 @@ export interface ParsedBookingMessage {
   date?: string; // YYYY-MM-DD
   time?: string; // HH:MM
   notes?: string;
-  rawDate?: string; // original string found
-  rawTime?: string; // original string found
-  ambiguous: string[]; // list of fields that need user confirmation
+  rawDate?: string;
+  rawTime?: string;
+  ambiguous: string[];
 }
+

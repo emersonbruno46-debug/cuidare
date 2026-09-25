@@ -11,6 +11,7 @@ import {
 import { services } from '../data/servicesData';
 import { professionals } from '../data/professionalsData';
 import type { Service, Professional } from '../types';
+import { getBusinessSettings } from '../lib/businessSettings';
 
 gsap.registerPlugin(ScrollTrigger, Flip);
 
@@ -480,8 +481,8 @@ export default function LandingPage({ onOpenBooking, onNavigateToAdmin }: Landin
             
             {/* Image (55-60%) */}
             <div className="lg:w-[55%]">
-              <div className="aspect-[4/3] bg-sand overflow-hidden">
-                <img src="/BACKGROUND HERO.png" alt="Ambiente Cuidare" className="w-full h-full object-cover opacity-90 mix-blend-multiply" />
+              <div className="aspect-[4/3] bg-sand overflow-hidden rounded-md">
+                <img src="/background-hero.webp" alt="Ambiente Cuidare" className="w-full h-full object-cover opacity-90 mix-blend-multiply" />
               </div>
             </div>
 
@@ -505,7 +506,7 @@ export default function LandingPage({ onOpenBooking, onNavigateToAdmin }: Landin
                     </li>
                     <li className="flex justify-between border-b border-border-subtle pb-2">
                       <span className="text-text-secondary">Terça a Sexta</span>
-                      <span className="text-text-primary font-medium text-right leading-tight">08:00 - 11:00<br/>14:00 - 18:00</span>
+                      <span className="text-text-primary font-medium text-right leading-tight">08:00 - 11:30<br/>14:00 - 18:00</span>
                     </li>
                     <li className="flex justify-between pb-2">
                       <span className="text-text-secondary">Sábado</span>
@@ -514,13 +515,30 @@ export default function LandingPage({ onOpenBooking, onNavigateToAdmin }: Landin
                   </ul>
                 </div>
 
+                {/* Social links rendered only when destinations exist */}
                 <div className="flex gap-4 pt-4">
-                  <a href="#" className="flex items-center justify-center w-12 h-12 rounded-full border border-border-strong text-espresso hover:bg-espresso hover:text-white transition-colors">
-                    <Instagram size={20} />
-                  </a>
-                  <a href="#" className="flex items-center justify-center w-12 h-12 rounded-full border border-border-strong text-espresso hover:bg-espresso hover:text-white transition-colors">
-                    <Phone size={20} />
-                  </a>
+                  {getBusinessSettings().instagramUrl ? (
+                    <a 
+                      href={getBusinessSettings().instagramUrl}
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="flex items-center justify-center w-12 h-12 rounded-full border border-border-strong text-espresso hover:bg-espresso hover:text-white transition-colors"
+                      aria-label="Instagram Cuidare"
+                    >
+                      <Instagram size={20} />
+                    </a>
+                  ) : null}
+                  {getBusinessSettings().businessWhatsapp ? (
+                    <a 
+                      href={`https://wa.me/${getBusinessSettings().businessWhatsapp?.replace(/\D/g, '')}`}
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="flex items-center justify-center w-12 h-12 rounded-full border border-border-strong text-espresso hover:bg-espresso hover:text-white transition-colors"
+                      aria-label="WhatsApp Cuidare"
+                    >
+                      <Phone size={20} />
+                    </a>
+                  ) : null}
                 </div>
               </div>
             </div>

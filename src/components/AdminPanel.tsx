@@ -105,19 +105,32 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
         .filter(b => b.professionalId === pro.id && b.status === 'concluido');
       const production = proBookings.reduce((s, b) => s + b.price, 0);
       const rate = pro.commissionRate ?? 0.5;
+
+      const commission = proBookings.reduce((sum, b) => {
+        if (typeof b.commissionAmount === 'number') return sum + b.commissionAmount;
+        const bRate = b.commissionRate ?? rate;
+        return sum + (b.price * bRate);
+      }, 0);
+
+      const salonCut = production - commission;
+
       return {
         proId: pro.id,
         proName: pro.name,
         role: pro.role,
         count: proBookings.length,
         production,
-        commission: production * rate,
-        salonCut: production * (1 - rate),
+        commission,
+        salonCut,
         rate
       };
     });
+
     const total = list.reduce((s, i) => s + i.production, 0);
-    return { list, total, totalCommission: total * 0.5, totalSalon: total * 0.5 };
+    const totalCommission = list.reduce((s, i) => s + i.commission, 0);
+    const totalSalon = list.reduce((s, i) => s + i.salonCut, 0);
+
+    return { list, total, totalCommission, totalSalon };
   };
   const commissionData = getCommissionReport();
 

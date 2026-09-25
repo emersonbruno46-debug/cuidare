@@ -1,108 +1,214 @@
-import type { Booking } from '../types';
+// ─────────────────────────────────────────────
+// CUIDARE — Availability Logic (America/Sao_Paulo)
+// ─────────────────────────────────────────────
+
+import type { Booking, Professional } from '../types';
 import { getScheduleBlocks, getAvailabilityRules, getDefaultAvailabilityRules } from './dataService';
+import { getBusinessSettings } from './businessSettings';
 
 export interface TimeSlot {
   time: string;
   available: boolean;
 }
 
-// Converte 'HH:MM' para minutos desde a meia noite
+export interface SlotInfo {
+  time: string;
+  status: 'livre' | 'agendado' | 'bloqueado' | 'intervalo';
+}
+
+/** Convert 'HH:MM' to minutes since midnight */
 export const timeToMinutes = (time: string): number => {
   if (!time) return 0;
   const [hours, minutes] = time.split(':').map(Number);
   return hours * 60 + minutes;
 };
 
-// Converte minutos para 'HH:MM'
+/** Convert minutes since midnight to 'HH:MM' */
 export const minutesToTime = (minutes: number): string => {
   const h = Math.floor(minutes / 60);
   const m = minutes % 60;
   return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
 };
 
-export interface SlotInfo {
-  time: string;
-  status: 'livre' | 'agendado' | 'bloqueado' | 'intervalo';
-}
+/** Get today's YYYY-MM-DD string and current minutes in America/Sao_Paulo timezone */
+export const getNowInSaoPaulo = (): { todayStr: string; currentMinutes: number } => {
+  const now = new Date();
+  const formatterDate = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Sao_Paulo',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  });
+  const formatterTime = new Intl.DateTimeFormat('pt-BR', {
+    timeZone: 'America/Sao_Paulo',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false
+  });
 
-/** Get available slots for public booking widget */
+  const parts = formatterTime.formatToParts(now);
+  const hour = parseInt(parts.find(p => p.type === 'hour')?.value || '0', 10);
+  const minute = parseInt(parts.find(p => p.type === 'minute')?.value || '0', 10);
+
+  return {
+    todayStr: formatterDate.format(now),
+    currentMinutes: hour * 60 + minute
+  };
+};
+
+/** Check if a single professional is available for a given time window on a specific date */
+export const isProfessionalAvailableForWindow = (
+  professionalId: string,
+  date: string,
+  startMinutes: number,
+  duration: number,
+  existingBookings: Booking[]
+): boolean => {
+  const endMinutes = startMinutes + duration;
+  const selectedDate = new Date(date + 'T00:00:00');
+  const dayOfWeek = selectedDate.getDay();
+
+  // 1. Check business opening hours for this day of week
+  const settings = getBusinessSettings();
+  const daySetting = settings.openingHours.find(h => h.dayOfWeek === dayOfWeek);
+  if (!daySetting || daySetting.closed) return false;
+
+  const openMin = timeToMinutes(daySetting.open);
+  const closeMin = timeToMinutes(daySetting.close);
+  if (startMinutes < openMin || endMinutes > closeMin) return false;
+
+  // 2. Check lunch / break interval
+  if (daySetting.breakStart && daySetting.breakEnd) {
+    const breakStartMin = timeToMinutes(daySetting.breakStart);
+    const breakEndMin = timeToMinutes(daySetting.breakEnd);
+    if (startMinutes < breakEndMin && endMinutes > breakStartMin) {
+      return false;
+    }
+  }
+
+  // 3. Check professional's custom availability rules
+  const customRules = getAvailabilityRules(professionalId).filter(r => r.dayOfWeek === dayOfWeek && r.active);
+  if (customRules.length > 0) {
+    let matchesRule = false;
+    for (const rule of customRules) {
+      const rStart = timeToMinutes(rule.startTime);
+      const rEnd = timeToMinutes(rule.endTime);
+      const rBreakStart = rule.breakStart ? timeToMinutes(rule.breakStart) : null;
+      const rBreakEnd = rule.breakEnd ? timeToMinutes(rule.breakEnd) : null;
+
+      if (startMinutes >= rStart && endMinutes <= rEnd) {
+        if (rBreakStart !== null && rBreakEnd !== null) {
+          if (startMinutes < rBreakEnd && endMinutes > rBreakStart) continue;
+        }
+        matchesRule = true;
+        break;
+      }
+    }
+    if (!matchesRule) return false;
+  }
+
+  // 4. Check schedule blocks (folgas, férias, bloqueios) for professional
+  const scheduleBlocks = getScheduleBlocks(professionalId);
+  const hasBlock = scheduleBlocks.some(blk => {
+    if (blk.date && blk.date !== date) return false;
+    if (blk.allDay) return true;
+    if (!blk.startTime || !blk.endTime) return false;
+    const blkStart = timeToMinutes(blk.startTime);
+    const blkEnd = timeToMinutes(blk.endTime);
+    return startMinutes < blkEnd && endMinutes > blkStart;
+  });
+  if (hasBlock) return false;
+
+  // 5. Check active booking overlaps (excluding status = 'cancelado')
+  const hasBookingConflict = existingBookings.some(b => {
+    if (b.professionalId !== professionalId) return false;
+    if (b.date !== date) return false;
+    if (b.status === 'cancelado') return false;
+
+    const bStart = timeToMinutes(b.time);
+    const bEnd = bStart + b.duration;
+    return startMinutes < bEnd && endMinutes > bStart;
+  });
+  if (hasBookingConflict) return false;
+
+  return true;
+};
+
+/** Get available slots for public booking widget or admin form */
 export const getAvailableSlots = (
   date: string,
   professionalId: string | null,
   serviceDuration: number,
   existingBookings: Booking[],
-  allProfessionals: { id: string }[]
+  eligibleProfessionals: Professional[]
 ): string[] => {
   if (!date) return [];
 
   const selectedDate = new Date(date + 'T00:00:00');
   const dayOfWeek = selectedDate.getDay();
 
-  if (dayOfWeek === 0 || dayOfWeek === 1) return []; // Closed Sun & Mon
+  const settings = getBusinessSettings();
+  const daySetting = settings.openingHours.find(h => h.dayOfWeek === dayOfWeek);
+  if (!daySetting || daySetting.closed) return [];
 
-  const operatingBlocks: { startMinutes: number; endMinutes: number }[] = [];
+  const openMin = timeToMinutes(daySetting.open);
+  const closeMin = timeToMinutes(daySetting.close);
+  const step = 30; // 30-min slot intervals
 
-  if (dayOfWeek >= 2 && dayOfWeek <= 5) {
-    operatingBlocks.push({ startMinutes: 8 * 60, endMinutes: 11 * 60 + 30 });
-    operatingBlocks.push({ startMinutes: 14 * 60, endMinutes: 18 * 60 });
-  } else if (dayOfWeek === 6) {
-    operatingBlocks.push({ startMinutes: 8 * 60, endMinutes: 18 * 60 });
-  }
+  const { todayStr, currentMinutes } = getNowInSaoPaulo();
+  const isToday = date === todayStr;
+  const leadTimeBuffer = settings.minLeadTimeMinutes ?? 30;
 
-  // Check schedule blocks (folgas, férias etc.)
-  const scheduleBlocks = getScheduleBlocks(professionalId ?? undefined);
-  const dayBlocked = scheduleBlocks.some(b =>
-    b.date === date && b.allDay
-  );
-  if (dayBlocked) return [];
-
-  let relevantBookings = professionalId
-    ? existingBookings.filter(b => b.professionalId === professionalId && b.date === date && b.status !== 'cancelado')
-    : existingBookings.filter(b => b.date === date && b.status !== 'cancelado');
+  // Filter active eligible professionals
+  const activePros = eligibleProfessionals.filter(p => p.active !== false);
+  if (activePros.length === 0) return [];
 
   const slots: string[] = [];
-  const step = 30;
 
-  for (const block of operatingBlocks) {
-    for (let current = block.startMinutes; current + serviceDuration <= block.endMinutes; current += step) {
-      const slotEnd = current + serviceDuration;
+  for (let current = openMin; current + serviceDuration <= closeMin; current += step) {
+    // Exclude past times if date is today in Sao Paulo
+    if (isToday && current <= currentMinutes + leadTimeBuffer) {
+      continue;
+    }
 
-      // Check schedule block for this specific time
-      const timeBlocked = scheduleBlocks.some(blk => {
-        if (blk.date !== date) return false;
-        if (blk.allDay) return true;
-        if (!blk.startTime || !blk.endTime) return false;
-        const blkStart = timeToMinutes(blk.startTime);
-        const blkEnd = timeToMinutes(blk.endTime);
-        return current < blkEnd && slotEnd > blkStart;
-      });
-      if (timeBlocked) continue;
-
-      let hasConflict = false;
-
-      if (professionalId) {
-        hasConflict = relevantBookings.some(booking => {
-          const bStart = timeToMinutes(booking.time);
-          const bEnd = bStart + booking.duration;
-          return current < bEnd && slotEnd > bStart;
-        });
-      } else {
-        let conflictingCount = 0;
-        relevantBookings.forEach(booking => {
-          const bStart = timeToMinutes(booking.time);
-          const bEnd = bStart + booking.duration;
-          if (current < bEnd && slotEnd > bStart) conflictingCount++;
-        });
-        hasConflict = conflictingCount >= allProfessionals.length;
+    if (professionalId) {
+      // Single specified professional
+      const pro = activePros.find(p => p.id === professionalId);
+      if (pro && isProfessionalAvailableForWindow(pro.id, date, current, serviceDuration, existingBookings)) {
+        slots.push(minutesToTime(current));
       }
-
-      if (!hasConflict) {
+    } else {
+      // "Primeira profissional disponível": Union of slots where AT LEAST ONE eligible pro is free
+      const isAnyProFree = activePros.some(pro =>
+        isProfessionalAvailableForWindow(pro.id, date, current, serviceDuration, existingBookings)
+      );
+      if (isAnyProFree) {
         slots.push(minutesToTime(current));
       }
     }
   }
 
   return slots;
+};
+
+/** Find an eligible professional who is free for a given slot window */
+export const findAvailableProfessionalForSlot = (
+  date: string,
+  time: string,
+  serviceDuration: number,
+  eligibleProfessionals: Professional[],
+  existingBookings: Booking[]
+): Professional | null => {
+  const startMinutes = timeToMinutes(time);
+  const activePros = eligibleProfessionals.filter(p => p.active !== false);
+
+  for (const pro of activePros) {
+    if (isProfessionalAvailableForWindow(pro.id, date, startMinutes, serviceDuration, existingBookings)) {
+      return pro;
+    }
+  }
+
+  return null;
 };
 
 /** Get full slot info for a professional on a given day (used in admin calendar) */
@@ -114,7 +220,6 @@ export const getProfessionalDaySlots = (
   const selectedDate = new Date(date + 'T00:00:00');
   const dayOfWeek = selectedDate.getDay();
 
-  // Get availability rules (or defaults)
   let rules = getAvailabilityRules(professionalId).filter(r => r.dayOfWeek === dayOfWeek && r.active);
   if (rules.length === 0) {
     rules = getDefaultAvailabilityRules(professionalId).filter(r => r.dayOfWeek === dayOfWeek);
@@ -141,15 +246,13 @@ export const getProfessionalDaySlots = (
     for (let current = start; current < end; current += rule.slotDuration) {
       const time = minutesToTime(current);
 
-      // Check break
       if (breakStart !== null && breakEnd !== null && current >= breakStart && current < breakEnd) {
         slots.push({ time, status: 'intervalo' });
         continue;
       }
 
-      // Check schedule block
       const blocked = scheduleBlocks.some(blk => {
-        if (blk.date !== date) return false;
+        if (blk.date && blk.date !== date) return false;
         if (blk.allDay) return true;
         if (!blk.startTime || !blk.endTime) return false;
         const blkStart = timeToMinutes(blk.startTime);
@@ -161,7 +264,6 @@ export const getProfessionalDaySlots = (
         continue;
       }
 
-      // Check booking
       const booking = dayBookings.find(b => {
         const bStart = timeToMinutes(b.time);
         const bEnd = bStart + b.duration;
@@ -178,3 +280,4 @@ export const getProfessionalDaySlots = (
 
   return slots;
 };
+
