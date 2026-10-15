@@ -222,7 +222,7 @@ export default function LandingPage({ onOpenBooking, onNavigateToAdmin, professi
               <img 
                 src="/team/HERO.png" 
                 alt="Profissionais Cuidare" 
-                className="h-full w-auto max-w-full object-contain object-bottom origin-bottom-right scale-105 lg:scale-110 xl:scale-115 mix-blend-multiply" 
+                className="h-full w-auto max-w-full object-contain object-bottom origin-bottom-right scale-105 lg:scale-110 xl:scale-115" 
                 style={{ objectPosition: 'right bottom' }}
               />
             </div>
@@ -443,7 +443,7 @@ export default function LandingPage({ onOpenBooking, onNavigateToAdmin, professi
               return (
                 <div key={prof.id} className="flex flex-col">
                   {/* Portrait setup: Real photo if available, or clean typographic monogram placeholder */}
-                  <div className="aspect-[4/5] bg-[#F7F2EA] flex flex-col justify-end p-6 relative border border-border-subtle group overflow-hidden rounded-sm">
+                  <div className="aspect-[4/5] bg-white flex flex-col justify-end p-6 relative border border-border-subtle group overflow-hidden rounded-sm">
                     {prof.photoUrl ? (
                       <img 
                         src={prof.photoUrl} 
