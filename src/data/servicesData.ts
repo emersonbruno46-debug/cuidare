@@ -43,6 +43,17 @@ export const services: Service[] = [
     variablePrice: true
   },
   {
+    id: 'escova-modelada',
+    name: 'Escova Modelada',
+    category: 'escovas',
+    priceBase: 50,
+    priceDetails: { P: 50, M: 60, G: 70 },
+    duration: 50,
+    description: 'Escovação técnica com movimento, volume e pontas trabalhadas e modeladas.',
+    variablePrice: true,
+    professionalIds: ['maisa', 'railma']
+  },
+  {
     id: 'chapa',
     name: 'Chapa',
     category: 'escovas',
@@ -61,7 +72,8 @@ export const services: Service[] = [
     priceBase: 70,
     duration: 60,
     description: 'Corte feminino completo (lavagem, corte e secagem rápida).',
-    recommendations: ['Venha com o cabelo desembaraçado se possível.']
+    recommendations: ['Venha com o cabelo desembaraçado se possível.'],
+    professionalIds: ['maisa', 'railma']
   },
   {
     id: 'mega-hair',
@@ -163,6 +175,41 @@ export const services: Service[] = [
     description: 'Alisamento tradicional de alta eficácia com selagem térmica dos fios.',
     variablePrice: true,
     recommendations: ['Certifique-se de não possuir sensibilidade respiratória ao formol.']
+  },
+  {
+    id: 'mechas',
+    name: 'Mechas',
+    category: 'quimicas',
+    priceBase: 250,
+    priceRange: { min: 250, max: 450 },
+    duration: 180,
+    description: 'Técnicas personalizadas de mechas, iluminação ou loiro global com proteção dos fios.',
+    variablePrice: true,
+    professionalIds: ['maisa', 'railma'],
+    recommendations: ['Requer teste de mecha ou avaliação prévia do histórico capilar.']
+  },
+  {
+    id: 'coloracao',
+    name: 'Coloração',
+    category: 'quimicas',
+    priceBase: 130,
+    priceRange: { min: 130, max: 190 },
+    duration: 90,
+    description: 'Aplicação de coloração global ou retoque de raiz com produtos de alta performance.',
+    variablePrice: true,
+    professionalIds: ['railma']
+  },
+  {
+    id: 'corte-mechas',
+    name: 'Corte + Mechas',
+    category: 'quimicas',
+    priceBase: 300,
+    priceRange: { min: 300, max: 500 },
+    duration: 210,
+    description: 'Combo completo de transformação: corte personalizado seguido de procedimento de mechas e tonalização.',
+    variablePrice: true,
+    professionalIds: ['maisa', 'railma'],
+    recommendations: ['Requer teste de mecha ou avaliação prévia do histórico capilar.']
   },
 
   // UNHAS
@@ -313,7 +360,7 @@ export const services: Service[] = [
     duration: 45,
     description: 'Lavagem + escova realizada no Espaço Cuidare.',
     variablePrice: true,
-    professionalIds: ['maisa', 'railma', 'tania']
+    professionalIds: ['maisa', 'railma']
   },
 
   // NOIVAS & DEBUTANTES (MAÍSA RODRIGUES)

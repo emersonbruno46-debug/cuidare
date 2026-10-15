@@ -94,17 +94,10 @@ export function seedDefaultAccounts(): void {
       changed = true;
     }
 
-    // Add Tânia if missing
-    if (!accounts.some(a => a.email === 'tania@cuidare.com.br')) {
-      accounts.push({
-        id: 'user_tania',
-        email: 'tania@cuidare.com.br',
-        name: 'Tânia',
-        role: 'collaborator',
-        professionalId: 'tania',
-        passwordHash: mockHash('cuidare2024'),
-        active: true
-      });
+    // Remove Tânia if present
+    const taniaIndex = accounts.findIndex(a => a.email === 'tania@cuidare.com.br' || a.professionalId === 'tania');
+    if (taniaIndex !== -1) {
+      accounts.splice(taniaIndex, 1);
       changed = true;
     }
 
@@ -148,15 +141,6 @@ export function seedDefaultAccounts(): void {
       name: 'Maísa Rodrigues',
       role: 'collaborator',
       professionalId: 'maisa',
-      passwordHash: mockHash('cuidare2024'),
-      active: true
-    },
-    {
-      id: 'user_tania',
-      email: 'tania@cuidare.com.br',
-      name: 'Tânia',
-      role: 'collaborator',
-      professionalId: 'tania',
       passwordHash: mockHash('cuidare2024'),
       active: true
     },
