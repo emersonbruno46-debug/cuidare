@@ -6,10 +6,10 @@ import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { Flip } from 'gsap/Flip';
 import { 
   Scissors, Sparkles, Heart, Clock, MapPin, Instagram, Phone, 
-  Star, ShieldCheck, Menu, X, ArrowRight
+  Star, ShieldCheck, Menu, X, ArrowRight, Crown, GraduationCap
 } from 'lucide-react';
 import { services } from '../data/servicesData';
-import { professionals } from '../data/professionalsData';
+import { professionals as defaultProfessionals } from '../data/professionalsData';
 import type { Service, Professional } from '../types';
 import { getBusinessSettings } from '../lib/businessSettings';
 
@@ -28,7 +28,8 @@ const Logo = ({ className = "h-12 w-auto" }: { className?: string }) => (
   </svg>
 );
 
-export default function LandingPage({ onOpenBooking, onNavigateToAdmin }: LandingPageProps) {
+export default function LandingPage({ onOpenBooking, onNavigateToAdmin, professionals: propProfessionals }: LandingPageProps) {
+  const activeProfessionals = propProfessionals && propProfessionals.length > 0 ? propProfessionals : defaultProfessionals;
   const [activeCategory, setActiveCategory] = useState<string>('escovas');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
@@ -42,11 +43,12 @@ export default function LandingPage({ onOpenBooking, onNavigateToAdmin }: Landin
   const categories = [
     { id: 'escovas', name: 'Escovas & Modelagem', icon: Scissors },
     { id: 'penteados', name: 'Penteados & Ondas', icon: Sparkles },
+    { id: 'noivas', name: 'Noivas & Debutantes', icon: Crown },
+    { id: 'cursos', name: 'Cursos', icon: GraduationCap },
     { id: 'tratamentos', name: 'Tratamentos', icon: Heart },
     { id: 'quimicas', name: 'Químicas', icon: Sparkles },
     { id: 'unhas', name: 'Manicure & Pedicure', icon: Sparkles },
     { id: 'sobrancelhas', name: 'Sobrancelhas', icon: Star },
-    { id: 'cilios', name: 'Cílios', icon: Sparkles },
     { id: 'maquiagem', name: 'Maquiagem', icon: Sparkles },
     { id: 'estetica', name: 'Estética & Massagem', icon: Heart },
   ];
@@ -54,6 +56,9 @@ export default function LandingPage({ onOpenBooking, onNavigateToAdmin }: Landin
   const filteredServices = services.filter(s => s.category === activeCategory);
 
   const getServiceFormattedPrice = (service: Service) => {
+    if (service.category === 'cursos' && service.priceBase === 0) {
+      return 'Sob consulta';
+    }
     if (service.priceType === 'range' && service.priceRange) {
       return `R$ ${service.priceRange.min},00 a R$ ${service.priceRange.max},00`;
     }
@@ -215,7 +220,7 @@ export default function LandingPage({ onOpenBooking, onNavigateToAdmin }: Landin
           <div className="lg:col-span-6 xl:col-span-7 flex items-end justify-center lg:justify-end mt-8 lg:mt-0 relative lg:h-full w-full z-0 pointer-events-none">
             <div className="relative h-[480px] sm:h-[580px] lg:h-[95%] xl:h-[98%] w-full flex items-end justify-center lg:justify-end hero-prof">
               <img 
-                src="/profissionais.webp" 
+                src="/team/HERO.png" 
                 alt="Profissionais Cuidare" 
                 className="h-full w-auto max-w-full object-contain object-bottom origin-bottom-right scale-105 lg:scale-110 xl:scale-115 mix-blend-multiply" 
                 style={{ objectPosition: 'right bottom' }}
@@ -307,7 +312,7 @@ export default function LandingPage({ onOpenBooking, onNavigateToAdmin }: Landin
           <div className="space-y-2">
             <AnimatePresence mode="popLayout">
               {filteredServices.map((service) => {
-                const profs = professionals.filter(p => p.categories.includes(service.category));
+                const profs = activeProfessionals.filter(p => p.categories.includes(service.category));
                 const isExternal = profs.length > 0 && profs.every(p => p.providerType === 'external_room_provider');
                 const firstProf = profs[0];
 
@@ -333,6 +338,15 @@ export default function LandingPage({ onOpenBooking, onNavigateToAdmin }: Landin
                           <Sparkles size={11} className="inline text-[#C7A15D]" /> {service.note}
                         </p>
                       )}
+                      {service.recommendations && service.recommendations.length > 0 && (
+                        <div className="mt-2 space-y-0.5">
+                          {service.recommendations.map((rec, rIdx) => (
+                            <p key={rIdx} className="text-[11px] text-taupe flex items-center gap-1.5">
+                              <span className="w-1 h-1 rounded-full bg-champagne inline-block" /> {rec}
+                            </p>
+                          ))}
+                        </div>
+                      )}
                       {isExternal && (
                         <span className="text-[10px] bg-warm-sand text-taupe px-2 py-1 rounded border border-border-subtle inline-block mt-2 font-medium">
                           Atendimento independente
@@ -353,7 +367,16 @@ export default function LandingPage({ onOpenBooking, onNavigateToAdmin }: Landin
                         </span>
                       </div>
 
-                      {isExternal ? (
+                      {service.category === 'cursos' ? (
+                        <a
+                          href={`https://wa.me/5538992380097?text=${encodeURIComponent("Olá, Maísa! Vi o Curso de Penteado e Maquiagem para Iniciantes no site da Cuidare e gostaria de consultar informações, cronograma e valores.")}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="px-4 py-2 bg-champagne text-white text-xs font-semibold uppercase hover:bg-champagne-dark transition-colors whitespace-nowrap text-center rounded-sm"
+                        >
+                          Consultar Turmas
+                        </a>
+                      ) : isExternal ? (
                         <a
                           href={`https://wa.me/${firstProf?.whatsapp?.replace(/\D/g, '') || '0000000000'}?text=Olá, ${firstProf?.name}! Vi seu atendimento pelo site da Cuidare e gostaria de saber sobre disponibilidade para ${service.name}.`}
                           target="_blank"
@@ -415,7 +438,7 @@ export default function LandingPage({ onOpenBooking, onNavigateToAdmin }: Landin
           </div>
 
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8">
-            {professionals.map((prof) => {
+            {activeProfessionals.map((prof) => {
               const initials = prof.name.split(' ').map(n => n[0]).join('').slice(0, 2);
               return (
                 <div key={prof.id} className="flex flex-col">
@@ -459,12 +482,23 @@ export default function LandingPage({ onOpenBooking, onNavigateToAdmin }: Landin
                         ))}
                       </div>
 
-                      <button
-                        onClick={() => onOpenBooking(undefined)}
-                        className="text-sm font-medium text-espresso flex items-center gap-2 hover:text-champagne transition-colors group-hover:translate-x-1 duration-300"
-                      >
-                        Agendar com {prof.name.split(' ')[0]} <ArrowRight size={14} />
-                      </button>
+                      {prof.id === 'lara' ? (
+                        <a
+                          href={`https://wa.me/${prof.whatsapp?.replace(/\D/g, '') || '5538991007706'}?text=${encodeURIComponent("Olá, Lara! Gostaria de informações sobre horários e agendamentos no Espaço Cuidare.")}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-sm font-medium text-espresso flex items-center gap-2 hover:text-champagne transition-colors group-hover:translate-x-1 duration-300"
+                        >
+                          Falar com Lara <ArrowRight size={14} />
+                        </a>
+                      ) : (
+                        <button
+                          onClick={() => onOpenBooking(undefined)}
+                          className="text-sm font-medium text-espresso flex items-center gap-2 hover:text-champagne transition-colors group-hover:translate-x-1 duration-300"
+                        >
+                          Agendar com {prof.name.split(' ')[0]} <ArrowRight size={14} />
+                        </button>
+                      )}
                     </div>
                   </div>
                 </div>

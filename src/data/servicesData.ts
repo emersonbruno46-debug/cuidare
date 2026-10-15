@@ -254,22 +254,13 @@ export const services: Service[] = [
     professionalIds: ['maisa']
   },
   {
-    id: 'make-social',
-    name: 'Maquiagem Social (Roberta)',
-    category: 'maquiagem',
-    priceBase: 150,
-    duration: 60,
-    description: 'Maquiagem profissional para festas, formaturas e eventos sociais (sem cílios postiços).',
-    professionalIds: ['roberta']
-  },
-  {
     id: 'make-completa',
     name: 'Maquiagem + Cílios Postiços',
     category: 'maquiagem',
     priceBase: 180,
     duration: 70,
     description: 'Maquiagem profissional com preparação de pele de alta durabilidade e aplicação de cílios postiços premium.',
-    professionalIds: ['roberta', 'maisa']
+    professionalIds: ['maisa']
   },
   {
     id: 'ondas-tradicionais',
@@ -322,7 +313,108 @@ export const services: Service[] = [
     duration: 45,
     description: 'Lavagem + escova realizada no Espaço Cuidare.',
     variablePrice: true,
-    professionalIds: ['maisa', 'railma', 'fernanda']
+    professionalIds: ['maisa', 'railma', 'tania']
+  },
+
+  // NOIVAS & DEBUTANTES (MAÍSA RODRIGUES)
+  {
+    id: 'producao-noiva',
+    name: 'Produção da Noiva (Experiência 01)',
+    category: 'noivas',
+    priceBase: 400,
+    duration: 90,
+    description: 'Uma opção mais simples e objetiva para a noiva que deseja maquiagem e penteado social.',
+    recommendations: [
+      'Inclui maquiagem social da noiva.',
+      'Inclui penteado social da noiva.',
+      'Ambiente acolhedor e preparado no Espaço Cuidare.'
+    ],
+    note: 'Maquiagem social + penteado social da noiva',
+    professionalIds: ['maisa']
+  },
+  {
+    id: 'noiva-civil',
+    name: 'Noiva Civil (Experiência 02)',
+    category: 'noivas',
+    priceBase: 500,
+    duration: 90,
+    description: 'Uma produção especial para o casamento civil, com beleza e cuidado em cada detalhe.',
+    recommendations: [
+      'Inclui maquiagem para o casamento civil.',
+      'Inclui penteado exclusivo.',
+      'Preparação necessária completa para a produção.'
+    ],
+    note: 'Produção completa para casamento civil',
+    professionalIds: ['maisa']
+  },
+  {
+    id: 'noiva-essencial',
+    name: 'Noiva Essencial (Experiência 03)',
+    category: 'noivas',
+    priceBase: 1500,
+    duration: 180,
+    description: 'Uma experiência que começa antes do casamento, com testes e planejamento completo do visual da noiva.',
+    recommendations: [
+      'Teste prévio de maquiagem.',
+      'Teste prévio de penteado.',
+      'Maquiagem no dia do casamento.',
+      'Penteado no dia do casamento.',
+      'Planejamento prévio e consultoria da produção.'
+    ],
+    note: 'Testes prévios + produção no grande dia',
+    professionalIds: ['maisa']
+  },
+  {
+    id: 'dia-noiva-cuidare',
+    name: 'Dia da Noiva Cuidare (Experiência 04)',
+    category: 'noivas',
+    priceBase: 2000,
+    duration: 240,
+    description: 'Um dia exclusivo dedicado à noiva, com tempo privativo, cuidado, relaxamento e tranquilidade durante toda a preparação.',
+    recommendations: [
+      'Teste de maquiagem e teste de penteado.',
+      'Maquiagem e penteado no dia do casamento.',
+      'Tempo exclusivo para a noiva no Espaço Cuidare.',
+      'Coffee break especial.',
+      'Acompanhamento nos momentos finais da preparação e making of.'
+    ],
+    note: 'Exclusividade Cuidare: testes, coffee break e acompanhamento VIP',
+    professionalIds: ['maisa']
+  },
+  {
+    id: 'pacote-debutante',
+    name: 'Pacote Debutante (Maquiagem & Penteado)',
+    category: 'noivas',
+    priceBase: 500,
+    duration: 120,
+    description: 'Uma experiência pensada para a debutante viver sua preparação com beleza, tranquilidade e todo o cuidado que o seu grande dia merece.',
+    recommendations: [
+      'Produção completa e personalizada de maquiagem e penteado.',
+      'Harmonização com vestido e proposta da festa.',
+      'Espaço para make off no Cuidare para fotos e bastidores.',
+      'Apoio durante a preparação e finalização antes do evento.'
+    ],
+    note: 'Make & penteado personalizados + espaço para make off',
+    professionalIds: ['maisa']
+  },
+
+  // CURSOS PROFISSIONAIS (MAÍSA RODRIGUES)
+  {
+    id: 'curso-iniciantes-maisa',
+    name: 'Curso de Penteado e Maquiagem para Iniciantes',
+    category: 'cursos',
+    priceBase: 0,
+    variablePrice: true,
+    duration: 180,
+    description: 'Capacitação prática ministrada por Maísa Rodrigues, especialista com mais de 20 anos de carreira. Técnicas fundamentais de penteados e maquiagem profissional para quem deseja ingressar na área.',
+    recommendations: [
+      'Aulas práticas presenciais no Espaço Cuidare.',
+      'Conteúdo didático do zero ao avançado.',
+      'Turmas com vagas limitadas para atenção individualizada.',
+      'Consulte próximas turmas, cronograma e investimento diretamente no WhatsApp.'
+    ],
+    note: 'Turmas abertas — Informações e inscrições via WhatsApp',
+    professionalIds: ['maisa']
   },
 
   // ESTÉTICA

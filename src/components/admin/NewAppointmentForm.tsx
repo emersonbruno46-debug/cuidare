@@ -188,7 +188,7 @@ export default function NewAppointmentForm({ initialDate, currentUser, onClose, 
                   </p>
                   <p className="text-xs text-[#C7A15D] font-semibold mb-2">Exemplo:</p>
                   <p className="text-xs text-[#756B65] bg-[#F8F5F0] p-3 rounded-lg italic mb-3">
-                    "Agendar horário de Bruna às 8:00 do dia 27/09 com Fernanda para escova"
+                    "Agendar horário de Bruna às 8:00 do dia 27/09 com Railma para escova"
                   </p>
                   <textarea
                     value={nlMessage}

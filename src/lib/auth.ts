@@ -48,8 +48,71 @@ function saveAccounts(accounts: StoredAccount[]): void {
 
 // ── Seed default admin account on first run
 export function seedDefaultAccounts(): void {
-  const accounts = getAccounts();
-  if (accounts.find(a => a.email === 'lane@cuidare.com.br')) return; // already seeded
+  let accounts = getAccounts();
+  const removedEmails = new Set([
+    'fernanda@cuidare.com.br',
+    'rosy@cuidare.com.br',
+    'geovanna@cuidare.com.br',
+    'roberta@cuidare.com.br',
+    'fabiana@cuidare.com.br'
+  ]);
+
+  if (accounts.length > 0) {
+    let changed = false;
+    // Remove obsolete users
+    const filtered = accounts.filter(a => !removedEmails.has(a.email.toLowerCase()));
+    if (filtered.length !== accounts.length) {
+      accounts = filtered;
+      changed = true;
+    }
+
+    // Add Fabiane if missing
+    if (!accounts.some(a => a.email === 'fabiane@cuidare.com.br')) {
+      accounts.push({
+        id: 'user_fabiane',
+        email: 'fabiane@cuidare.com.br',
+        name: 'Fabiane',
+        role: 'collaborator',
+        professionalId: 'fabiane',
+        passwordHash: mockHash('cuidare2024'),
+        active: true
+      });
+      changed = true;
+    }
+
+    // Add Lara if missing
+    if (!accounts.some(a => a.email === 'lara@cuidare.com.br')) {
+      accounts.push({
+        id: 'user_lara',
+        email: 'lara@cuidare.com.br',
+        name: 'Lara',
+        role: 'collaborator',
+        professionalId: 'lara',
+        passwordHash: mockHash('cuidare2024'),
+        active: true
+      });
+      changed = true;
+    }
+
+    // Add Tânia if missing
+    if (!accounts.some(a => a.email === 'tania@cuidare.com.br')) {
+      accounts.push({
+        id: 'user_tania',
+        email: 'tania@cuidare.com.br',
+        name: 'Tânia',
+        role: 'collaborator',
+        professionalId: 'tania',
+        passwordHash: mockHash('cuidare2024'),
+        active: true
+      });
+      changed = true;
+    }
+
+    if (changed) {
+      saveAccounts(accounts);
+    }
+    return;
+  }
 
   const defaultAccounts: StoredAccount[] = [
     {
@@ -60,7 +123,7 @@ export function seedDefaultAccounts(): void {
       passwordHash: mockHash('cuidare2024admin'),
       active: true
     },
-    // Collaborators — one per professional
+    // Collaborators — active team members
     {
       id: 'user_evelyn',
       email: 'evelyn@cuidare.com.br',
@@ -80,42 +143,6 @@ export function seedDefaultAccounts(): void {
       active: true
     },
     {
-      id: 'user_fernanda',
-      email: 'fernanda@cuidare.com.br',
-      name: 'Fernanda',
-      role: 'collaborator',
-      professionalId: 'fernanda',
-      passwordHash: mockHash('cuidare2024'),
-      active: true
-    },
-    {
-      id: 'user_rosy',
-      email: 'rosy@cuidare.com.br',
-      name: 'Rosy',
-      role: 'collaborator',
-      professionalId: 'rosy',
-      passwordHash: mockHash('cuidare2024'),
-      active: true
-    },
-    {
-      id: 'user_geovanna',
-      email: 'geovanna@cuidare.com.br',
-      name: 'Geovanna',
-      role: 'collaborator',
-      professionalId: 'geovanna',
-      passwordHash: mockHash('cuidare2024'),
-      active: true
-    },
-    {
-      id: 'user_roberta',
-      email: 'roberta@cuidare.com.br',
-      name: 'Roberta',
-      role: 'collaborator',
-      professionalId: 'roberta',
-      passwordHash: mockHash('cuidare2024'),
-      active: true
-    },
-    {
       id: 'user_maisa',
       email: 'maisa@cuidare.com.br',
       name: 'Maísa Rodrigues',
@@ -125,11 +152,29 @@ export function seedDefaultAccounts(): void {
       active: true
     },
     {
-      id: 'user_fabiana',
-      email: 'fabiana@cuidare.com.br',
-      name: 'Fabiana',
+      id: 'user_tania',
+      email: 'tania@cuidare.com.br',
+      name: 'Tânia',
       role: 'collaborator',
-      professionalId: 'fabiana',
+      professionalId: 'tania',
+      passwordHash: mockHash('cuidare2024'),
+      active: true
+    },
+    {
+      id: 'user_fabiane',
+      email: 'fabiane@cuidare.com.br',
+      name: 'Fabiane',
+      role: 'collaborator',
+      professionalId: 'fabiane',
+      passwordHash: mockHash('cuidare2024'),
+      active: true
+    },
+    {
+      id: 'user_lara',
+      email: 'lara@cuidare.com.br',
+      name: 'Lara',
+      role: 'collaborator',
+      professionalId: 'lara',
       passwordHash: mockHash('cuidare2024'),
       active: true
     }

@@ -26,7 +26,9 @@ export type ServiceCategory =
   | 'cilios'
   | 'maquiagem'
   | 'penteados'
-  | 'estetica';
+  | 'estetica'
+  | 'noivas'
+  | 'cursos';
 
 export interface Service {
   id: string;

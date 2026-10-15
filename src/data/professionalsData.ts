@@ -24,25 +24,15 @@ export const professionals: Professional[] = [
     whatsapp: '5538992697559'
   },
   {
-    id: 'fernanda',
-    name: 'Fernanda',
-    role: 'Hair Stylist & Colorista',
-    categories: ['escovas', 'tratamentos', 'quimicas'],
-    bio: 'Especialista em transformações capilares, cortes modernos, escovas artísticas e químicas capilares de alta precisão.',
-    specialties: ['Corte Feminino', 'Progressivas', 'Escova + Babyliss'],
-    providerType: 'internal',
-    whatsapp: '5538992142774'
-  },
-  {
     id: 'maisa',
     name: 'Maísa Rodrigues',
-    role: 'Maquiagem & Penteados',
-    categories: ['maquiagem', 'penteados', 'escovas'],
+    role: 'Cabeleireira, Penteados & Maquiagem',
+    categories: ['maquiagem', 'penteados', 'escovas', 'noivas', 'cursos'],
     photoUrl: '/team/maisa.webp',
-    bio: 'Especialista dedicada a produções sofisticadas para noivas, maquiagens de alta durabilidade e penteados exclusivos.',
-    specialties: ['Maquiagem Social', 'Ondas Hollywoodianas', 'Penteado Coque'],
-    specialtyHighlight: 'Especialidade: Noivas',
-    specialtyBadge: 'NOIVAS',
+    bio: 'Cabeleireira em geral há mais de 20 anos, especialista em penteados sofisticados e maquiagens de alta durabilidade para momentos especiais, noivas e debutantes. Ministra cursos de penteado e maquiagem para iniciantes.',
+    specialties: ['Produção de Noivas & Debutantes', 'Especialização em Penteados', 'Cursos para Iniciantes'],
+    specialtyHighlight: 'Noivas, Debutantes & Cursos',
+    specialtyBadge: 'NOIVAS & CURSOS',
     providerType: 'internal',
     whatsapp: '5538992380097'
   },
@@ -57,41 +47,24 @@ export const professionals: Professional[] = [
     providerType: 'internal'
   },
   {
-    id: 'rosy',
-    name: 'Rosy',
-    role: 'Terapeuta Capilar & Cronograma Capilar',
-    categories: ['tratamentos'],
-    bio: 'Dedicada à saúde integrada dos cabelos. Especialista em tratar patologias do couro cabeludo e restabelecer a saúde dos fios.',
-    specialties: ['Terapia Capilar', 'Ozonioterapia', 'Cronograma Personalizado'],
-    providerType: 'internal'
-  },
-  {
-    id: 'geovanna',
-    name: 'Geovanna',
-    role: 'Lash Artist',
-    categories: ['cilios'],
-    bio: 'Especialista licenciada em extensões de cílios clássicas e de alto volume, garantindo durabilidade e um olhar marcante.',
-    specialties: ['Volume Russo', 'Extensão Fio a Fio', 'Lash Lifting'],
-    providerType: 'internal'
-  },
-  {
-    id: 'roberta',
-    name: 'Roberta',
-    role: 'Makeup Artist (Maquiadora)',
-    categories: ['maquiagem'],
-    photoUrl: '/team/roberta.webp',
-    bio: 'Maquiadora profissional apaixonada por realçar a beleza natural com técnicas modernas de contorno, iluminação e durabilidade.',
-    specialties: ['Maquiagem Social', 'Maquiagem de Noivas', 'Aplicação de Cílios'],
-    providerType: 'internal',
-    whatsapp: '5538991353424'
-  },
-  {
-    id: 'fabiana',
-    name: 'Fabiana',
+    id: 'fabiane',
+    name: 'Fabiane',
     role: 'Esteticista & Massoterapeuta',
     categories: ['estetica'],
+    photoUrl: '/team/FABIANE.png',
     bio: 'Especialista em drenagem linfática, cuidados de pele avançados, massagens terapêuticas e depilação a laser de alta tecnologia.',
     specialties: ['Massagem Relaxante', 'Limpeza de Pele Profunda', 'Depilação a Laser'],
     providerType: 'internal'
+  },
+  {
+    id: 'lara',
+    name: 'Lara',
+    role: 'Recepção & Atendimento Cuidare',
+    categories: [],
+    photoUrl: '/team/LARA.png',
+    bio: 'Responsável pelo acolhimento, recepção e agendamento de todas as clientes com dedicação, carinho e excelência.',
+    specialties: ['Recepção Cuidare', 'Atendimento Humanizado', 'Agendamentos'],
+    providerType: 'internal',
+    whatsapp: '5538991007706'
   }
 ];

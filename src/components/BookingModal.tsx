@@ -88,7 +88,7 @@ export default function BookingModal({
         }
         return p.categories.includes(selectedService.category);
       })
-    : activeProfessionals.filter(p => p.active !== false);
+    : activeProfessionals.filter(p => p.active !== false && p.categories.length > 0);
 
   // Generate calendar days for the next 14 days
   const getNext14Days = () => {
@@ -243,6 +243,9 @@ Gostaria de enviar este comprovante.`;
   };
 
   const formatModalServicePrice = (service: Service) => {
+    if (service.category === 'cursos' && service.priceBase === 0) {
+      return 'Sob consulta';
+    }
     if (service.priceType === 'range' && service.priceRange) {
       return `R$ ${service.priceRange.min},00 a R$ ${service.priceRange.max},00`;
     }
@@ -260,13 +263,14 @@ Gostaria de enviar este comprovante.`;
 
   const categoriesList = [
     { id: 'todos', name: 'Todos' },
+    { id: 'noivas', name: 'Noivas & Debutantes' },
+    { id: 'cursos', name: 'Cursos' },
     { id: 'escovas', name: 'Escovas' },
     { id: 'penteados', name: 'Penteados' },
     { id: 'tratamentos', name: 'Tratamentos' },
     { id: 'quimicas', name: 'Químicas' },
     { id: 'unhas', name: 'Unhas' },
     { id: 'sobrancelhas', name: 'Sobrancelhas' },
-    { id: 'cilios', name: 'Cílios' },
     { id: 'maquiagem', name: 'Maquiagem' },
     { id: 'estetica', name: 'Estética' }
   ];

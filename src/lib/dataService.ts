@@ -111,6 +111,8 @@ export function cancelNotificationJobsForBooking(bookingId: string): void {
 
 export function getProfessionals(): Professional[] {
   const stored = getList<Professional>(KEYS.professionals);
+  const validSeedIds = new Set(seedProfessionals.map(p => p.id));
+
   if (stored.length === 0) {
     const seeded = seedProfessionals.map(p => ({
       ...p,
@@ -122,10 +124,14 @@ export function getProfessionals(): Professional[] {
     return seeded;
   }
 
-  // Ensure missing professionals from seed are added, but DO NOT overwrite user-modified fields!
+  // Remove obsolete professionals that are no longer in seedProfessionals
   let updated = false;
-  const merged = [...stored];
+  const merged = stored.filter(p => validSeedIds.has(p.id));
+  if (merged.length !== stored.length) {
+    updated = true;
+  }
 
+  // Ensure all active professionals from seed are present and static metadata is up-to-date
   seedProfessionals.forEach(seedPro => {
     const existingIdx = merged.findIndex(p => p.id === seedPro.id);
     if (existingIdx === -1) {
@@ -136,6 +142,29 @@ export function getProfessionals(): Professional[] {
         commissionRate: seedPro.commissionRate ?? 0.5
       });
       updated = true;
+    } else {
+      const current = merged[existingIdx];
+      if (
+        current.photoUrl !== seedPro.photoUrl ||
+        current.name !== seedPro.name ||
+        current.role !== seedPro.role ||
+        current.bio !== seedPro.bio ||
+        JSON.stringify(current.categories) !== JSON.stringify(seedPro.categories) ||
+        JSON.stringify(current.specialties) !== JSON.stringify(seedPro.specialties)
+      ) {
+        merged[existingIdx] = {
+          ...current,
+          name: seedPro.name,
+          role: seedPro.role,
+          bio: seedPro.bio,
+          photoUrl: seedPro.photoUrl,
+          categories: seedPro.categories,
+          specialties: seedPro.specialties,
+          specialtyHighlight: seedPro.specialtyHighlight,
+          specialtyBadge: seedPro.specialtyBadge
+        };
+        updated = true;
+      }
     }
   });
 
@@ -722,16 +751,16 @@ export function seedDemoData(): void {
   };
 
   const demoBookings: Omit<Booking, 'id' | 'createdAt'>[] = [
-    { serviceId:'corte', serviceName:'Corte Feminino', professionalId:'fernanda', professionalName:'Fernanda', date:getRelativeDate(-2), time:'09:00', duration:60, clientName:'Ana Paula Santos', clientPhone:'5538988451243', clientEmail:'anapaula@gmail.com', status:'concluido', price:70, commissionRate:0.5, commissionAmount:35, origin:'site', endTime:'10:00' },
+    { serviceId:'corte', serviceName:'Corte Feminino', professionalId:'railma', professionalName:'Railma', date:getRelativeDate(-2), time:'09:00', duration:60, clientName:'Ana Paula Santos', clientPhone:'5538988451243', clientEmail:'anapaula@gmail.com', status:'concluido', price:70, commissionRate:0.5, commissionAmount:35, origin:'site', endTime:'10:00' },
     { serviceId:'pe-e-mao', serviceName:'Pé e Mão', professionalId:'evelyn', professionalName:'Evelyn', date:getRelativeDate(-2), time:'14:30', duration:80, clientName:'Beatriz Souza', clientPhone:'5538991223847', status:'concluido', price:70, commissionRate:0.5, commissionAmount:35, origin:'site', endTime:'15:50' },
     { serviceId:'progressiva-sem-formol', serviceName:'Progressiva Sem Formol', professionalId:'railma', professionalName:'Railma', date:getRelativeDate(-1), time:'08:30', duration:150, clientName:'Camila Lima', clientPhone:'5538998231122', notes:'Possui mechas loiras', status:'concluido', price:210, commissionRate:0.5, commissionAmount:105, origin:'site', endTime:'11:00' },
-    { serviceId:'hidratacao-ozonio', serviceName:'Hidratação + Ozonioterapia', professionalId:'rosy', professionalName:'Rosy', date:getRelativeDate(-1), time:'15:00', duration:50, clientName:'Débora Santos', clientPhone:'5538991045544', status:'concluido', price:120, commissionRate:0.5, commissionAmount:60, origin:'site', endTime:'15:50' },
+    { serviceId:'hidratacao-ozonio', serviceName:'Hidratação + Ozonioterapia', professionalId:'tania', professionalName:'Tânia', date:getRelativeDate(-1), time:'15:00', duration:50, clientName:'Débora Santos', clientPhone:'5538991045544', status:'concluido', price:120, commissionRate:0.5, commissionAmount:60, origin:'site', endTime:'15:50' },
     { serviceId:'spa-dos-pes', serviceName:'Spa dos Pés', professionalId:'evelyn', professionalName:'Evelyn', date:getRelativeDate(0), time:'09:00', duration:40, clientName:'Amanda Silva', clientPhone:'5538992014477', status:'pendente', price:60, origin:'site', endTime:'09:40' },
-    { serviceId:'make-completa', serviceName:'Maquiagem + Cílios Postiços', professionalId:'roberta', professionalName:'Roberta', date:getRelativeDate(0), time:'11:00', duration:70, clientName:'Juliana Costa', clientPhone:'5538988227711', notes:'Formatura. Tons terrosos.', status:'pendente', price:180, origin:'site', endTime:'12:10' },
-    { serviceId:'drenagem-corporal', serviceName:'Drenagem Linfática', professionalId:'fabiana', professionalName:'Fabiana', date:getRelativeDate(0), time:'14:30', duration:60, clientName:'Patrícia Alves', clientPhone:'5538991448855', status:'pendente', price:100, origin:'site', endTime:'15:30' },
+    { serviceId:'make-completa', serviceName:'Maquiagem + Cílios Postiços', professionalId:'maisa', professionalName:'Maísa Rodrigues', date:getRelativeDate(0), time:'11:00', duration:70, clientName:'Juliana Costa', clientPhone:'5538988227711', notes:'Formatura. Tons terrosos.', status:'pendente', price:180, origin:'site', endTime:'12:10' },
+    { serviceId:'drenagem-corporal', serviceName:'Drenagem Linfática', professionalId:'fabiane', professionalName:'Fabiane', date:getRelativeDate(0), time:'14:30', duration:60, clientName:'Patrícia Alves', clientPhone:'5538991448855', status:'pendente', price:100, origin:'site', endTime:'15:30' },
     { serviceId:'design-henna', serviceName:'Design + Henna', professionalId:'railma', professionalName:'Railma', date:getRelativeDate(0), time:'16:00', duration:45, clientName:'Letícia Dias', clientPhone:'5538999205521', status:'pendente', price:55, origin:'site', endTime:'16:45' },
-    { serviceId:'escova-simples', serviceName:'Escova', professionalId:'fernanda', professionalName:'Fernanda', date:getRelativeDate(0), time:'17:00', duration:45, clientName:'Bruna Gomes', clientPhone:'5538992001122', status:'pendente', price:45, origin:'site', endTime:'17:45' },
-    { serviceId:'cilios-volume', serviceName:'Volume Russo', professionalId:'geovanna', professionalName:'Geovanna', date:getRelativeDate(1), time:'09:30', duration:150, clientName:'Sofia Melo', clientPhone:'5538991823847', notes:'Primeira vez.', status:'pendente', price:160, origin:'site', endTime:'12:00' }
+    { serviceId:'escova-simples', serviceName:'Escova', professionalId:'tania', professionalName:'Tânia', date:getRelativeDate(0), time:'17:00', duration:45, clientName:'Bruna Gomes', clientPhone:'5538992001122', status:'pendente', price:45, origin:'site', endTime:'17:45' },
+    { serviceId:'producao-noiva', serviceName:'Produção da Noiva (Experiência 01)', professionalId:'maisa', professionalName:'Maísa Rodrigues', date:getRelativeDate(1), time:'09:30', duration:90, clientName:'Sofia Melo', clientPhone:'5538991823847', notes:'Casamento civil.', status:'pendente', price:400, origin:'site', endTime:'11:00' }
   ];
 
   const bookings: Booking[] = demoBookings.map(b => ({
