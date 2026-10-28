@@ -210,7 +210,7 @@ export default function LandingPage({ onOpenBooking, onNavigateToAdmin, professi
               <button onClick={() => onOpenBooking()} className="hero-cta h-[52px] px-8 bg-espresso text-white font-medium rounded-md flex items-center justify-center gap-2 hover:bg-deep-espresso transition-colors">
                 Agendar meu horário <ArrowRight size={16} />
               </button>
-              <a href="#servicos" className="hero-cta h-[52px] px-8 border border-border-strong text-text-primary font-medium rounded-md flex items-center justify-center hover:bg-black/5 transition-colors">
+              <a href="#servicos" className="hero-cta h-[52px] px-8 border border-border-strong text-text-primary font-medium rounded-md flex items-center justify-center hover:bg-black/5 transition-colors bg-warm-cream/80 backdrop-blur-sm">
                 Conhecer os serviços
               </a>
             </div>
@@ -222,7 +222,7 @@ export default function LandingPage({ onOpenBooking, onNavigateToAdmin, professi
               <img 
                 src="/team/HERO.png" 
                 alt="Profissionais Cuidare" 
-                className="h-full w-auto max-w-full object-contain object-bottom origin-bottom-right scale-105 lg:scale-110 xl:scale-115" 
+                className="h-full w-auto max-w-full object-contain object-bottom origin-bottom-right scale-105 lg:scale-105 xl:scale-110" 
                 style={{ objectPosition: 'right bottom' }}
               />
             </div>
