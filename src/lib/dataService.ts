@@ -10,7 +10,7 @@ import type {
 } from '../types';
 import { professionals as seedProfessionals } from '../data/professionalsData';
 import { getCurrentUser } from './auth';
-import { timeToMinutes } from './availability';
+import { timeToMinutes, isProfessionalAvailableForWindow } from './availability';
 import { getBusinessSettings, normalizeBrazilianPhone } from './businessSettings';
 
 // ── Storage keys
@@ -248,11 +248,34 @@ export function createBooking(data: Omit<Booking, 'id' | 'createdAt'>): { bookin
 
   const normalizedPhone = normalizeBrazilianPhone(data.clientPhone);
 
-  const { conflict, conflictWith } = validateConflict(
-    data.professionalId, data.date, data.time, data.duration
+  // 1. Proteção contra clique duplo e repetição da mesma solicitação (últimos 15 segundos)
+  const recentBookings = getBookings();
+  const duplicate = recentBookings.find(b => 
+    b.professionalId === data.professionalId &&
+    b.date === data.date &&
+    b.time === data.time &&
+    b.clientName.trim().toLowerCase() === data.clientName.trim().toLowerCase() &&
+    b.status !== 'cancelado' &&
+    (Date.now() - new Date(b.createdAt).getTime()) < 15000
   );
-  if (conflict) {
-    return { booking: null, error: `Conflito de horário com o agendamento de ${conflictWith?.clientName} às ${conflictWith?.time}.` };
+  if (duplicate) {
+    return { booking: duplicate };
+  }
+
+  // 2. Validação da janela de disponibilidade completa (expediente, pausas, bloqueios e reservas ativas)
+  const startMin = timeToMinutes(data.time);
+  const isAvailable = isProfessionalAvailableForWindow(
+    data.professionalId,
+    data.date,
+    startMin,
+    data.duration,
+    recentBookings
+  );
+  if (!isAvailable) {
+    return { 
+      booking: null, 
+      error: 'O horário selecionado não está mais disponível para esta profissional na data escolhida. Por favor, selecione outro horário.' 
+    };
   }
 
   const pro = getProfessionals().find(p => p.id === data.professionalId);
@@ -314,10 +337,18 @@ export function updateBooking(id: string, updates: Partial<Booking>): { booking:
     const date = updates.date ?? list[idx].date;
     const startTime = updates.time ?? list[idx].time;
     const duration = updates.duration ?? list[idx].duration;
+    const startMin = timeToMinutes(startTime);
 
-    const { conflict, conflictWith } = validateConflict(professionalId, date, startTime, duration, id);
-    if (conflict) {
-      return { booking: null, error: `Horário indisponível! Conflito com agendamento de ${conflictWith?.clientName} às ${conflictWith?.time}.` };
+    const isAvailable = isProfessionalAvailableForWindow(
+      professionalId,
+      date,
+      startMin,
+      duration,
+      list,
+      id
+    );
+    if (!isAvailable) {
+      return { booking: null, error: 'Horário indisponível! Conflito de agenda ou fora do horário de funcionamento.' };
     }
 
     // Recalc endTime

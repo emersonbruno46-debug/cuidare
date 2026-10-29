@@ -30,6 +30,12 @@ export type ServiceCategory =
   | 'noivas'
   | 'cursos';
 
+export type ServiceFlowType = 
+  | 'agendamento_direto' 
+  | 'curso_turmas' 
+  | 'avaliacao_previa' 
+  | 'consulta_recepcao';
+
 export interface Service {
   id: string;
   name: string;
@@ -44,6 +50,8 @@ export interface Service {
   variablePrice?: boolean;
   professionalIds?: string[];
   note?: string;
+  flowType?: ServiceFlowType;
+  flowBadge?: string;
 }
 
 export interface Professional {
@@ -52,6 +60,7 @@ export interface Professional {
   role: string;
   categories: ServiceCategory[];
   photoUrl?: string; // Storage URL ou undefined
+  avatarUrl?: string; // Miniatura otimizada para modais e avatares
   bio: string;
   specialties: string[];
   specialtyHighlight?: string;

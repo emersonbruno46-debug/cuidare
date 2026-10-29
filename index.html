@@ -5,14 +5,14 @@
     <link rel="icon" type="image/svg+xml" href="/cuidare logo.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Cuidare Espaço de Beleza e Saúde | Agendamento Online em Taiobeiras</title>
-    <meta name="description" content="Agende seu horário online no Cuidare Espaço de Beleza em Taiobeiras - MG. Cortes, escovas, manicure, terapias capilares, cílios, maquiagem e estática em um espaço completo de 4 andares." />
+    <meta name="description" content="Agende seu horário online no Cuidare Espaço de Beleza em Taiobeiras - MG. Cortes, escovas, manicure, terapias capilares, cílios, maquiagem e estética em um espaço completo de 4 andares." />
     <link rel="canonical" href="https://cuidare-sigma.vercel.app/" />
     
     <!-- OpenGraph Social Metadata -->
     <meta property="og:type" content="website" />
     <meta property="og:url" content="https://cuidare-sigma.vercel.app/" />
     <meta property="og:title" content="Cuidare Espaço de Beleza e Saúde | Agendamento Online" />
-    <meta property="og:description" content="Agende seu horário de forma rápida e precisa no Cuidare Espaço de Beleza em Taiobeiras - MG." />
+    <meta property="og:description" content="Agende seu horário de forma rápida e segura no Cuidare Espaço de Beleza em Taiobeiras - MG." />
     <meta property="og:image" content="https://cuidare-sigma.vercel.app/background-hero.webp" />
 
     <!-- Twitter Card -->
@@ -20,6 +20,52 @@
     <meta name="twitter:title" content="Cuidare Espaço de Beleza e Saúde" />
     <meta name="twitter:description" content="Agende seu horário online no Cuidare Espaço de Beleza em Taiobeiras - MG." />
     <meta name="twitter:image" content="https://cuidare-sigma.vercel.app/background-hero.webp" />
+
+    <!-- Dados Estruturados JSON-LD (BeautySalon / LocalBusiness) -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "BeautySalon",
+      "name": "Cuidare Espaço de Beleza e Saúde",
+      "image": "https://cuidare-sigma.vercel.app/background-hero.webp",
+      "description": "Espaço de beleza completo em Taiobeiras - MG, com tratamentos capilares, escovas, manicure, pedicure, sobrancelhas, maquiagem e estética.",
+      "telephone": "+55-38-99100-7706",
+      "address": {
+        "@type": "PostalAddress",
+        "streetAddress": "Rua Paracatu, 15",
+        "addressLocality": "Taiobeiras",
+        "addressRegion": "MG",
+        "postalCode": "39580-000",
+        "addressCountry": "BR"
+      },
+      "geo": {
+        "@type": "GeoCoordinates",
+        "latitude": "-15.8077",
+        "longitude": "-42.2334"
+      },
+      "openingHoursSpecification": [
+        {
+          "@type": "OpeningHoursSpecification",
+          "dayOfWeek": ["Tuesday", "Wednesday", "Thursday", "Friday"],
+          "opens": "08:00",
+          "closes": "11:30"
+        },
+        {
+          "@type": "OpeningHoursSpecification",
+          "dayOfWeek": ["Tuesday", "Wednesday", "Thursday", "Friday"],
+          "opens": "14:00",
+          "closes": "18:00"
+        },
+        {
+          "@type": "OpeningHoursSpecification",
+          "dayOfWeek": "Saturday",
+          "opens": "08:00",
+          "closes": "18:00"
+        }
+      ],
+      "priceRange": "$$"
+    }
+    </script>
   </head>
   <body class="bg-[#FAF8F5] text-[#29231F] font-sans antialiased">
     <div id="root"></div>

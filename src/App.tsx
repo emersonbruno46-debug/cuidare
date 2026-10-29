@@ -4,7 +4,7 @@
 
 import { useState, useEffect, lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
-import type { Service } from './types';
+import type { Service, Professional } from './types';
 import LandingPage from './components/LandingPage';
 import BookingModal from './components/BookingModal';
 import { getSession, seedDefaultAccounts } from './lib/auth';
@@ -54,6 +54,7 @@ function CollaboratorRoute() {
 function AppRoutes() {
   const [bookingOpen, setBookingOpen] = useState(false);
   const [preselectedService, setPreselectedService] = useState<Service | undefined>(undefined);
+  const [preselectedProfessional, setPreselectedProfessional] = useState<Professional | undefined>(undefined);
   const [refreshKey, setRefreshKey] = useState(0);
   const location = useLocation();
 
@@ -68,8 +69,19 @@ function AppRoutes() {
     setBookingOpen(false);
   }, [location.pathname]);
 
-  const openBooking = (service?: Service) => {
-    setPreselectedService(service);
+  const openBooking = (options?: { service?: Service; professional?: Professional } | Service) => {
+    if (!options) {
+      setPreselectedService(undefined);
+      setPreselectedProfessional(undefined);
+    } else if ('id' in options && 'priceBase' in options) {
+      // Direct service passed
+      setPreselectedService(options);
+      setPreselectedProfessional(undefined);
+    } else {
+      const opts = options as { service?: Service; professional?: Professional };
+      setPreselectedService(opts.service);
+      setPreselectedProfessional(opts.professional);
+    }
     setBookingOpen(true);
   };
 
@@ -125,6 +137,7 @@ function AppRoutes() {
           onClose={() => setBookingOpen(false)}
           professionals={liveProfessionals}
           initialService={preselectedService}
+          initialProfessional={preselectedProfessional}
           existingBookings={getBookings()}
           onAddBooking={(b) => {
             const result = createBooking(b);

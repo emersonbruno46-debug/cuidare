@@ -5,6 +5,9 @@
 import type { Booking, Professional } from '../types';
 import { getScheduleBlocks, getAvailabilityRules, getDefaultAvailabilityRules } from './dataService';
 import { getBusinessSettings } from './businessSettings';
+import { getDayOfWeekFromDateString, getNowInSaoPaulo } from './dateUtils';
+
+export { getNowInSaoPaulo };
 
 export interface TimeSlot {
   time: string;
@@ -30,43 +33,17 @@ export const minutesToTime = (minutes: number): string => {
   return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
 };
 
-/** Get today's YYYY-MM-DD string and current minutes in America/Sao_Paulo timezone */
-export const getNowInSaoPaulo = (): { todayStr: string; currentMinutes: number } => {
-  const now = new Date();
-  const formatterDate = new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'America/Sao_Paulo',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit'
-  });
-  const formatterTime = new Intl.DateTimeFormat('pt-BR', {
-    timeZone: 'America/Sao_Paulo',
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false
-  });
-
-  const parts = formatterTime.formatToParts(now);
-  const hour = parseInt(parts.find(p => p.type === 'hour')?.value || '0', 10);
-  const minute = parseInt(parts.find(p => p.type === 'minute')?.value || '0', 10);
-
-  return {
-    todayStr: formatterDate.format(now),
-    currentMinutes: hour * 60 + minute
-  };
-};
-
 /** Check if a single professional is available for a given time window on a specific date */
 export const isProfessionalAvailableForWindow = (
   professionalId: string,
   date: string,
   startMinutes: number,
   duration: number,
-  existingBookings: Booking[]
+  existingBookings: Booking[],
+  excludeBookingId?: string
 ): boolean => {
   const endMinutes = startMinutes + duration;
-  const selectedDate = new Date(date + 'T00:00:00');
-  const dayOfWeek = selectedDate.getDay();
+  const dayOfWeek = getDayOfWeekFromDateString(date);
 
   // 1. Check business opening hours for this day of week
   const settings = getBusinessSettings();
@@ -119,11 +96,12 @@ export const isProfessionalAvailableForWindow = (
   });
   if (hasBlock) return false;
 
-  // 5. Check active booking overlaps (excluding status = 'cancelado')
+  // 5. Check active booking overlaps (excluding status = 'cancelado' and excludeBookingId)
   const hasBookingConflict = existingBookings.some(b => {
     if (b.professionalId !== professionalId) return false;
     if (b.date !== date) return false;
     if (b.status === 'cancelado') return false;
+    if (excludeBookingId && b.id === excludeBookingId) return false;
 
     const bStart = timeToMinutes(b.time);
     const bEnd = bStart + b.duration;
@@ -144,9 +122,7 @@ export const getAvailableSlots = (
 ): string[] => {
   if (!date) return [];
 
-  const selectedDate = new Date(date + 'T00:00:00');
-  const dayOfWeek = selectedDate.getDay();
-
+  const dayOfWeek = getDayOfWeekFromDateString(date);
   const settings = getBusinessSettings();
   const daySetting = settings.openingHours.find(h => h.dayOfWeek === dayOfWeek);
   if (!daySetting || daySetting.closed) return [];
@@ -197,13 +173,14 @@ export const findAvailableProfessionalForSlot = (
   time: string,
   serviceDuration: number,
   eligibleProfessionals: Professional[],
-  existingBookings: Booking[]
+  existingBookings: Booking[],
+  excludeBookingId?: string
 ): Professional | null => {
   const startMinutes = timeToMinutes(time);
   const activePros = eligibleProfessionals.filter(p => p.active !== false);
 
   for (const pro of activePros) {
-    if (isProfessionalAvailableForWindow(pro.id, date, startMinutes, serviceDuration, existingBookings)) {
+    if (isProfessionalAvailableForWindow(pro.id, date, startMinutes, serviceDuration, existingBookings, excludeBookingId)) {
       return pro;
     }
   }
@@ -217,8 +194,7 @@ export const getProfessionalDaySlots = (
   date: string,
   existingBookings: Booking[]
 ): SlotInfo[] => {
-  const selectedDate = new Date(date + 'T00:00:00');
-  const dayOfWeek = selectedDate.getDay();
+  const dayOfWeek = getDayOfWeekFromDateString(date);
 
   let rules = getAvailabilityRules(professionalId).filter(r => r.dayOfWeek === dayOfWeek && r.active);
   if (rules.length === 0) {
@@ -280,4 +256,3 @@ export const getProfessionalDaySlots = (
 
   return slots;
 };
-

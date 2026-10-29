@@ -279,7 +279,10 @@ export const services: Service[] = [
     category: 'cilios',
     priceBase: 120,
     duration: 120,
-    description: 'Alongamento natural aplicando um fio sintético sobre cada cílio natural.'
+    description: 'Alongamento natural aplicando um fio sintético sobre cada cílio natural.',
+    flowType: 'consulta_recepcao',
+    flowBadge: 'Sob Consulta',
+    note: 'Consulte horários e disponibilidade com a Recepção Cuidare'
   },
   {
     id: 'cilios-volume',
@@ -287,7 +290,10 @@ export const services: Service[] = [
     category: 'cilios',
     priceBase: 160,
     duration: 150,
-    description: 'Extensão de cílios com leques artesanais de fios ultrafinos para efeito volumoso e glamouroso.'
+    description: 'Extensão de cílios com leques artesanais de fios ultrafinos para efeito volumoso e glamouroso.',
+    flowType: 'consulta_recepcao',
+    flowBadge: 'Sob Consulta',
+    note: 'Consulte horários e disponibilidade com a Recepção Cuidare'
   },
 
   // MAQUIAGEM & PENTEADOS (MAÍSA RODRIGUES)
@@ -409,6 +415,8 @@ export const services: Service[] = [
       'Planejamento prévio e consultoria da produção.'
     ],
     note: 'Testes prévios + produção no grande dia',
+    flowType: 'avaliacao_previa',
+    flowBadge: 'Planejamento & Testes',
     professionalIds: ['maisa']
   },
   {
@@ -426,6 +434,8 @@ export const services: Service[] = [
       'Acompanhamento nos momentos finais da preparação e making of.'
     ],
     note: 'Exclusividade Cuidare: testes, coffee break e acompanhamento VIP',
+    flowType: 'avaliacao_previa',
+    flowBadge: 'Exclusivo Noivas',
     professionalIds: ['maisa']
   },
   {
@@ -442,6 +452,8 @@ export const services: Service[] = [
       'Apoio durante a preparação e finalização antes do evento.'
     ],
     note: 'Make & penteado personalizados + espaço para make off',
+    flowType: 'avaliacao_previa',
+    flowBadge: 'Avaliação Prévia',
     professionalIds: ['maisa']
   },
 
@@ -461,6 +473,8 @@ export const services: Service[] = [
       'Consulte próximas turmas, cronograma e investimento diretamente no WhatsApp.'
     ],
     note: 'Turmas abertas — Informações e inscrições via WhatsApp',
+    flowType: 'curso_turmas',
+    flowBadge: 'Turmas & Inscrições',
     professionalIds: ['maisa']
   },
 

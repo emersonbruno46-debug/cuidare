@@ -5,18 +5,20 @@ import { useGSAP } from '@gsap/react';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { Flip } from 'gsap/Flip';
 import { 
-  Scissors, Sparkles, Heart, Clock, MapPin, Instagram, Phone, 
-  Star, ShieldCheck, Menu, X, ArrowRight, Crown, GraduationCap
+  Sparkles, Clock, MapPin, Instagram, Phone, 
+  ShieldCheck, Menu, X, ArrowRight
 } from 'lucide-react';
 import { services } from '../data/servicesData';
 import { professionals as defaultProfessionals } from '../data/professionalsData';
+import { CATEGORIES } from '../data/categoriesData';
 import type { Service, Professional } from '../types';
 import { getBusinessSettings } from '../lib/businessSettings';
+import PrivacyPolicyModal from './PrivacyPolicyModal';
 
 gsap.registerPlugin(ScrollTrigger, Flip);
 
 interface LandingPageProps {
-  onOpenBooking: (service?: Service) => void;
+  onOpenBooking: (options?: { service?: Service; professional?: Professional } | Service) => void;
   onNavigateToAdmin: () => void;
   professionals?: Professional[];
 }
@@ -33,25 +35,13 @@ export default function LandingPage({ onOpenBooking, onNavigateToAdmin, professi
   const [activeCategory, setActiveCategory] = useState<string>('escovas');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const [privacyOpen, setPrivacyOpen] = useState(false);
 
+  const containerRef = useRef<HTMLDivElement>(null);
   const heroRef = useRef<HTMLDivElement>(null);
   const heroContentRef = useRef<HTMLDivElement>(null);
   const heroImageRef = useRef<HTMLDivElement>(null);
   const conceptRef = useRef<HTMLDivElement>(null);
-
-  // Group services by category
-  const categories = [
-    { id: 'escovas', name: 'Escovas & Modelagem', icon: Scissors },
-    { id: 'penteados', name: 'Penteados & Ondas', icon: Sparkles },
-    { id: 'noivas', name: 'Noivas & Debutantes', icon: Crown },
-    { id: 'cursos', name: 'Cursos', icon: GraduationCap },
-    { id: 'tratamentos', name: 'Tratamentos', icon: Heart },
-    { id: 'quimicas', name: 'Químicas', icon: Sparkles },
-    { id: 'unhas', name: 'Manicure & Pedicure', icon: Sparkles },
-    { id: 'sobrancelhas', name: 'Sobrancelhas', icon: Star },
-    { id: 'maquiagem', name: 'Maquiagem', icon: Sparkles },
-    { id: 'estetica', name: 'Estética & Massagem', icon: Heart },
-  ];
 
   const filteredServices = services.filter(s => s.category === activeCategory);
 
@@ -74,83 +64,93 @@ export default function LandingPage({ onOpenBooking, onNavigateToAdmin, professi
     return `R$ ${service.priceBase},00`;
   };
 
-  // Scroll effect for Navbar (Progressive Blur logic)
+  // Scroll effect for Navbar
   useEffect(() => {
     const handleScroll = () => {
-      setScrolled(window.scrollY > 50);
+      setScrolled(window.scrollY > 40);
     };
-    window.addEventListener('scroll', handleScroll);
+    window.addEventListener('scroll', handleScroll, { passive: true });
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  // GSAP Animations
+  // GSAP Animations with container scope & reduced-motion check
   useGSAP(() => {
+    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (prefersReducedMotion) return;
+
     const tl = gsap.timeline();
     
     // Hero Animations
-    if (heroContentRef.current && heroImageRef.current) {
-      tl.fromTo(heroImageRef.current, { scale: 1.05, autoAlpha: 0 }, { scale: 1, autoAlpha: 1, duration: 1.5, ease: 'power3.out' })
-        .fromTo('.hero-eyebrow', { y: 20, autoAlpha: 0 }, { y: 0, autoAlpha: 1, duration: 0.8, ease: 'power3.out' }, '-=1')
-        .fromTo('.hero-h1', { y: 30, autoAlpha: 0 }, { y: 0, autoAlpha: 1, duration: 0.8, ease: 'power3.out' }, '-=0.6')
-        .fromTo('.hero-p', { y: 20, autoAlpha: 0 }, { y: 0, autoAlpha: 1, duration: 0.8, ease: 'power3.out' }, '-=0.6')
-        .fromTo('.hero-cta', { y: 20, autoAlpha: 0 }, { y: 0, autoAlpha: 1, duration: 0.8, ease: 'power3.out', stagger: 0.1 }, '-=0.6')
-        .fromTo('.hero-prof', { y: 30, autoAlpha: 0 }, { y: 0, autoAlpha: 1, duration: 1, ease: 'power3.out', stagger: 0.15 }, '-=0.8');
+    if (heroImageRef.current) {
+      tl.fromTo(heroImageRef.current, { scale: 1.04, autoAlpha: 0 }, { scale: 1, autoAlpha: 1, duration: 1.2, ease: 'power2.out' })
+        .fromTo('.hero-eyebrow', { y: 15, autoAlpha: 0 }, { y: 0, autoAlpha: 1, duration: 0.7, ease: 'power2.out' }, '-=0.8')
+        .fromTo('.hero-h1', { y: 20, autoAlpha: 0 }, { y: 0, autoAlpha: 1, duration: 0.7, ease: 'power2.out' }, '-=0.5')
+        .fromTo('.hero-p', { y: 15, autoAlpha: 0 }, { y: 0, autoAlpha: 1, duration: 0.7, ease: 'power2.out' }, '-=0.5')
+        .fromTo('.hero-cta', { y: 15, autoAlpha: 0 }, { y: 0, autoAlpha: 1, duration: 0.7, ease: 'power2.out', stagger: 0.1 }, '-=0.5')
+        .fromTo('.hero-prof', { y: 20, autoAlpha: 0 }, { y: 0, autoAlpha: 1, duration: 0.9, ease: 'power2.out' }, '-=0.7');
     }
 
-    // Concept Section reveal
-    if (conceptRef.current) {
+    // Concept Section reveal (safely checks selector presence inside container)
+    const revealElements = containerRef.current?.querySelectorAll('.concept-reveal');
+    if (conceptRef.current && revealElements && revealElements.length > 0) {
       gsap.fromTo(
-        '.concept-reveal',
-        { y: 30, autoAlpha: 0 },
+        revealElements,
+        { y: 25, autoAlpha: 0 },
         {
           y: 0,
           autoAlpha: 1,
-          duration: 0.9,
+          duration: 0.8,
           stagger: 0.15,
-          ease: 'power3.out',
+          ease: 'power2.out',
           scrollTrigger: {
             trigger: conceptRef.current,
-            start: 'top 75%',
+            start: 'top 80%',
           }
         }
       );
     }
-  }, { scope: heroRef });
+  }, { scope: containerRef });
 
   return (
-    <div className="min-h-screen bg-ivory relative selection:bg-champagne selection:text-white">
+    <div ref={containerRef} className="min-h-screen bg-[#FAF8F5] relative selection:bg-[#C7A15D] selection:text-white">
       
       {/* HEADER / NAVBAR */}
-      <nav 
-        className={`fixed top-0 w-full z-50 transition-all duration-300 ${
+      <header 
+        className={`fixed top-0 w-full z-40 transition-all duration-300 ${
           scrolled 
-            ? 'bg-[#FCFAF7]/80 backdrop-blur-md border-b border-border-subtle h-[76px]' 
-            : 'bg-transparent border-b border-transparent h-[82px]'
+            ? 'bg-[#FAF8F5]/90 backdrop-blur-md border-b border-[#E6DFD5] h-[72px] shadow-xs' 
+            : 'bg-transparent border-b border-transparent h-[80px]'
         }`}
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-full flex justify-between items-center">
-          <div className="flex items-center gap-3">
-            <Logo className={`h-10 w-auto transition-colors ${scrolled ? 'text-espresso' : 'text-espresso'}`} />
-            <span className={`font-serif tracking-widest font-bold text-lg hidden sm:block ${scrolled ? 'text-espresso' : 'text-espresso'}`}>CUIDARE</span>
-          </div>
+          <a href="#" className="flex items-center gap-3 focus:outline-none focus:ring-2 focus:ring-[#C7A15D] rounded-lg p-1">
+            <Logo className="h-9 w-auto text-[#29231F]" />
+            <span className="font-serif tracking-widest font-bold text-lg hidden sm:block text-[#29231F]">CUIDARE</span>
+          </a>
 
-          {/* Desktop Nav - Text Roll Navigation Effect (CSS based hover) */}
-          <div className="hidden md:flex items-center gap-8">
-            <a href="#sobre" className="text-sm font-medium text-text-secondary hover:text-espresso transition-colors">O Espaço</a>
-            <a href="#servicos" className="text-sm font-medium text-text-secondary hover:text-espresso transition-colors">Serviços</a>
-            <a href="#profissionais" className="text-sm font-medium text-text-secondary hover:text-espresso transition-colors">Profissionais</a>
-            <a href="#horarios" className="text-sm font-medium text-text-secondary hover:text-espresso transition-colors">Horários & Local</a>
+          {/* Desktop Nav - Balanced padding for 768px+ */}
+          <nav className="hidden md:flex items-center gap-5 lg:gap-8" aria-label="Navegação principal">
+            <a href="#sobre" className="text-xs lg:text-sm font-medium text-[#5C534D] hover:text-[#29231F] transition-colors">O Espaço</a>
+            <a href="#servicos" className="text-xs lg:text-sm font-medium text-[#5C534D] hover:text-[#29231F] transition-colors">Serviços</a>
+            <a href="#profissionais" className="text-xs lg:text-sm font-medium text-[#5C534D] hover:text-[#29231F] transition-colors">Equipe</a>
+            <a href="#horarios" className="text-xs lg:text-sm font-medium text-[#5C534D] hover:text-[#29231F] transition-colors">Horários & Local</a>
             <button 
               onClick={() => onOpenBooking()}
-              className="px-6 h-10 bg-espresso text-white text-sm font-medium rounded-md hover:bg-deep-espresso transition-all duration-300 active:scale-95 shadow-sm"
+              className="px-5 lg:px-6 h-10 bg-[#29231F] text-white text-xs lg:text-sm font-semibold rounded-lg hover:bg-[#3D342E] transition-all duration-200 active:scale-95 shadow-sm focus:outline-none focus:ring-2 focus:ring-[#C7A15D]"
             >
               Agendar horário
             </button>
-          </div>
+          </nav>
 
-          {/* Mobile Menu Toggle */}
+          {/* Mobile Menu Toggle - Touch target >= 44x44px with accessible name & state */}
           <div className="md:hidden">
-            <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="text-espresso p-2">
+            <button 
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)} 
+              className="w-11 h-11 flex items-center justify-center text-[#29231F] hover:bg-black/5 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#C7A15D]"
+              aria-label={mobileMenuOpen ? "Fechar menu de navegação" : "Abrir menu de navegação"}
+              aria-expanded={mobileMenuOpen}
+              aria-controls="mobile-navigation-drawer"
+            >
               {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
             </button>
           </div>
@@ -160,113 +160,153 @@ export default function LandingPage({ onOpenBooking, onNavigateToAdmin, professi
         <AnimatePresence>
           {mobileMenuOpen && (
             <motion.div 
-              initial={{ opacity: 0, y: -20 }}
+              id="mobile-navigation-drawer"
+              initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
-              className="md:hidden bg-paper/95 backdrop-blur-lg border-b border-border-subtle px-4 pt-2 pb-6 flex flex-col gap-4 absolute w-full top-[100%]"
+              transition={{ duration: 0.2 }}
+              className="md:hidden bg-[#FAF8F5] border-b border-[#E6DFD5] px-6 py-6 shadow-xl"
             >
-              <a href="#sobre" onClick={() => setMobileMenuOpen(false)} className="text-text-primary py-2 font-medium border-b border-border-subtle">O Espaço</a>
-              <a href="#servicos" onClick={() => setMobileMenuOpen(false)} className="text-text-primary py-2 font-medium border-b border-border-subtle">Serviços</a>
-              <a href="#profissionais" onClick={() => setMobileMenuOpen(false)} className="text-text-primary py-2 font-medium border-b border-border-subtle">Profissionais</a>
-              <a href="#horarios" onClick={() => setMobileMenuOpen(false)} className="text-text-primary py-2 font-medium border-b border-border-subtle">Horários & Local</a>
-              <button 
-                onClick={() => { setMobileMenuOpen(false); onOpenBooking(); }}
-                className="w-full h-12 bg-espresso text-white font-medium rounded-md mt-2"
-              >
-                Agendar Horário
-              </button>
+              <nav className="flex flex-col gap-4 text-center">
+                <a 
+                  href="#sobre" 
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="py-2 text-base font-serif text-[#29231F] hover:text-[#70542D]"
+                >
+                  O Espaço
+                </a>
+                <a 
+                  href="#servicos" 
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="py-2 text-base font-serif text-[#29231F] hover:text-[#70542D]"
+                >
+                  Serviços
+                </a>
+                <a 
+                  href="#profissionais" 
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="py-2 text-base font-serif text-[#29231F] hover:text-[#70542D]"
+                >
+                  Profissionais
+                </a>
+                <a 
+                  href="#horarios" 
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="py-2 text-base font-serif text-[#29231F] hover:text-[#70542D]"
+                >
+                  Horários & Local
+                </a>
+                <button 
+                  onClick={() => { setMobileMenuOpen(false); onOpenBooking(); }}
+                  className="w-full min-h-[44px] bg-[#29231F] text-white text-xs font-bold uppercase tracking-wider rounded-xl hover:bg-[#3D342E] transition-colors mt-2"
+                >
+                  Agendar horário online
+                </button>
+              </nav>
             </motion.div>
           )}
         </AnimatePresence>
-      </nav>
+      </header>
 
-      {/* HERO SECTION: Editorial Beauty Composition */}
+      {/* HERO SECTION */}
       <section 
+        id="hero"
         ref={heroRef}
-        className="relative pt-[120px] pb-16 lg:pb-0 min-h-screen lg:min-h-0 lg:h-screen flex items-center bg-ivory overflow-hidden"
+        className="relative min-h-[92vh] lg:min-h-screen pt-24 lg:pt-28 pb-12 overflow-hidden flex items-center bg-[#FAF8F5]"
       >
-        {/* Background Fachada (Soft integration) */}
-        <div ref={heroImageRef} className="absolute inset-0 z-0">
-          <img src="/background-hero.webp" alt="Fachada" className="w-full h-full object-cover opacity-40 mix-blend-multiply" />
-          <div className="absolute inset-0 bg-gradient-to-r from-ivory via-ivory/80 to-transparent lg:w-2/3" />
-          <div className="absolute inset-0 bg-gradient-to-t from-ivory via-transparent to-transparent" />
-        </div>
-
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full z-10 grid lg:grid-cols-12 gap-8 items-center h-full">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full grid lg:grid-cols-12 gap-8 lg:gap-12 items-center">
           
-          {/* TEXT CONTENT (5-6 columns) */}
-          <div ref={heroContentRef} className="lg:col-span-6 xl:col-span-5 flex flex-col items-start pt-8 lg:pt-0 relative z-10">
-            <span className="hero-eyebrow text-xs uppercase tracking-[0.2em] text-taupe font-semibold mb-4 lg:mb-6 flex items-center gap-2">
-              <span className="w-1.5 h-1.5 rounded-full bg-champagne block"></span>
-              Cuidare Espaço de Beleza e Saúde
+          {/* Hero Copy (5-6 cols) */}
+          <div ref={heroContentRef} className="lg:col-span-6 xl:col-span-5 space-y-6 z-10">
+            <span className="hero-eyebrow text-xs uppercase tracking-widest text-[#70542D] font-bold block">
+              Espaço de Beleza e Bem-Estar em Taiobeiras
             </span>
-            <h1 className="hero-h1 text-[42px] sm:text-[52px] lg:text-[clamp(58px,5vw,82px)] font-serif text-espresso leading-[1.05] mb-6">
-              Beleza, cuidado e <span className="text-champagne font-serif italic">praticidade</span> em um só lugar.
+            <h1 className="hero-h1 text-[38px] sm:text-[48px] lg:text-[56px] font-serif text-[#29231F] leading-[1.15] font-normal tracking-tight">
+              O cuidado que você merece, em cada detalhe.
             </h1>
-            <p className="hero-p text-text-secondary text-base lg:text-[17px] leading-relaxed mb-8 max-w-[90%]">
-              Agende online de forma rápida e segura seu horário com nossas profissionais. Escolha seu serviço e desfrute de uma experiência editorial e precisa.
+            <p className="hero-p text-[#5C534D] text-base sm:text-lg leading-relaxed font-light max-w-xl">
+              Agende online de forma rápida e segura com nossas especialistas. Escolha seu procedimento e desfrute de uma experiência acolhedora, sofisticada e feita sob medida para você.
             </p>
-            <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
-              <button onClick={() => onOpenBooking()} className="hero-cta h-[52px] px-8 bg-espresso text-white font-medium rounded-md flex items-center justify-center gap-2 hover:bg-deep-espresso transition-colors">
+            
+            <div className="flex flex-col sm:flex-row gap-3 pt-2">
+              <button 
+                onClick={() => onOpenBooking()} 
+                className="hero-cta min-h-[48px] px-7 bg-[#29231F] text-white text-sm font-semibold rounded-xl flex items-center justify-center gap-2 hover:bg-[#3D342E] transition-all shadow-sm active:scale-95 focus:outline-none focus:ring-2 focus:ring-[#C7A15D]"
+              >
                 Agendar meu horário <ArrowRight size={16} />
               </button>
-              <a href="#servicos" className="hero-cta h-[52px] px-8 border border-border-strong text-text-primary font-medium rounded-md flex items-center justify-center hover:bg-black/5 transition-colors bg-warm-cream/80 backdrop-blur-sm">
-                Conhecer os serviços
+              <a 
+                href="#servicos" 
+                className="hero-cta min-h-[48px] px-6 border border-[#DDD6CC] text-[#29231F] text-sm font-semibold rounded-xl flex items-center justify-center hover:bg-black/5 transition-colors"
+              >
+                Conhecer serviços
               </a>
             </div>
           </div>
 
-          {/* HUMAN VISUAL - Balanced Editorial Placement */}
-          <div className="lg:col-span-6 xl:col-span-7 flex items-end justify-center lg:justify-end mt-8 lg:mt-0 relative lg:h-full w-full z-0 pointer-events-none">
-            <div className="relative h-[480px] sm:h-[580px] lg:h-[95%] xl:h-[98%] w-full flex items-end justify-center lg:justify-end hero-prof">
+          {/* Hero Image with WebP and srcset */}
+          <div ref={heroImageRef} className="lg:col-span-6 xl:col-span-7 flex items-end justify-center lg:justify-end mt-4 lg:mt-0 relative w-full z-0">
+            <div className="relative h-[420px] sm:h-[520px] lg:h-[620px] w-full flex items-end justify-center lg:justify-end hero-prof">
               <img 
-                src="/team/HERO.png" 
-                alt="Profissionais Cuidare" 
-                className="h-full w-auto max-w-full object-contain object-bottom origin-bottom-right scale-105 lg:scale-105 xl:scale-110" 
-                style={{ objectPosition: 'right bottom' }}
+                src="/team/hero.webp"
+                srcSet="/team/hero-800.webp 800w, /team/hero.webp 1242w"
+                sizes="(max-width: 768px) 100vw, 650px"
+                width={1242}
+                height={1055}
+                loading="eager"
+                decoding="async"
+                alt="Equipe de especialistas Cuidare Espaço de Beleza" 
+                className="h-full w-auto max-w-full object-contain object-bottom origin-bottom-right" 
               />
             </div>
           </div>
         </div>
       </section>
 
-      {/* CONCEPT SECTION: Editorial Spread */}
-      <section id="sobre" ref={conceptRef} className="py-24 bg-warm-sand relative">
+      {/* CONCEPT SECTION */}
+      <section id="sobre" ref={conceptRef} className="py-20 lg:py-24 bg-[#F5EFE6] border-t border-[#E6DFD5] relative">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex flex-col lg:flex-row items-center gap-16 lg:gap-24">
+          <div className="flex flex-col lg:flex-row items-center gap-12 lg:gap-20">
             
-            {/* Copy (42-50%) */}
-            <div className="lg:w-[45%] order-2 lg:order-1 concept-reveal">
-              <h2 className="text-[36px] sm:text-[46px] lg:text-[clamp(44px,4vw,64px)] font-serif text-espresso leading-tight mb-8">
+            {/* Copy */}
+            <div className="lg:w-[48%] concept-reveal space-y-6">
+              <span className="text-xs uppercase tracking-widest text-[#70542D] font-bold block">
+                Estrutura & Conceito
+              </span>
+              <h2 className="text-[32px] sm:text-[42px] lg:text-[48px] font-serif text-[#29231F] leading-tight font-normal">
                 Um conceito completo de cuidado para você.
               </h2>
-              <p className="text-text-secondary text-base lg:text-[17px] leading-relaxed mb-10">
-                O Cuidare Studio foi planejado para atender todas as demandas na área de beleza e bem-estar em um único endereço. Uma infraestrutura de ponta unida a uma equipe altamente capacitada para proporcionar conforto absoluto.
+              <p className="text-[#5C534D] text-base leading-relaxed font-light">
+                O Cuidare Studio foi planejado para reunir excelência estética e bem-estar em um único endereço. Uma infraestrutura moderna e acolhedora unida a uma equipe altamente capacitada para proporcionar conforto absoluto.
               </p>
               
-              <div className="flex flex-col sm:flex-row gap-12">
+              <div className="flex flex-col sm:flex-row gap-8 pt-4">
                 <div className="flex items-start gap-4">
-                  <span className="text-5xl font-serif text-champagne leading-none mt-1">04</span>
-                  <span className="text-sm font-medium text-taupe uppercase tracking-wider leading-snug pt-1">
+                  <span className="text-5xl font-serif text-[#C7A15D] leading-none">04</span>
+                  <span className="text-sm font-semibold text-[#5C534D] uppercase tracking-wider leading-snug pt-1">
                     Andares dedicados<br/>ao cuidado
                   </span>
                 </div>
                 <div className="flex items-center gap-3">
-                  <ShieldCheck className="text-sage" size={24} />
-                  <span className="text-sm font-medium text-text-secondary">
-                    100% nas normas<br/>da vigilância sanitária
+                  <ShieldCheck className="text-[#5B7C65] shrink-0" size={28} />
+                  <span className="text-sm font-medium text-[#5C534D]">
+                    Ambiente planejado com<br/>rigorosa biossegurança
                   </span>
                 </div>
               </div>
             </div>
 
-            {/* Main Image (50-58%) */}
-            <div className="lg:w-[55%] order-1 lg:order-2 w-full concept-reveal">
-              <div className="aspect-[4/5] sm:aspect-square lg:aspect-[4/5] w-full overflow-hidden bg-warm-surface relative">
+            {/* Atmosphere Image */}
+            <div className="lg:w-[52%] w-full concept-reveal">
+              <div className="aspect-[4/3] w-full overflow-hidden rounded-2xl border border-[#E6DFD5] shadow-md bg-[#FAF8F5]">
                 <img 
                   src="/background-hero.webp" 
-                  alt="Estrutura Cuidare" 
-                  className="w-full h-full object-cover mix-blend-multiply opacity-90"
+                  alt="Ambiente do Espaço Cuidare em Taiobeiras" 
+                  width={1000}
+                  height={750}
+                  loading="lazy"
+                  decoding="async"
+                  className="w-full h-full object-cover"
                 />
               </div>
             </div>
@@ -276,119 +316,105 @@ export default function LandingPage({ onOpenBooking, onNavigateToAdmin, professi
       </section>
 
       {/* SERVICES SECTION */}
-      <section id="servicos" className="py-24 bg-ivory">
+      <section id="servicos" className="py-20 lg:py-24 bg-[#FAF8F5] border-t border-[#E6DFD5]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="mb-16">
-            <h2 className="text-[36px] lg:text-[48px] font-serif text-espresso mb-4">Nossos Serviços</h2>
-            <p className="text-text-secondary max-w-2xl text-[17px]">Explore nosso menu de procedimentos e agende seu horário com precisão.</p>
+          
+          <div className="mb-10 max-w-2xl">
+            <span className="text-xs uppercase tracking-widest text-[#70542D] font-bold block mb-1">Catálogo Exclusivo</span>
+            <h2 className="text-[32px] sm:text-[44px] font-serif text-[#29231F] font-normal">Nossos Serviços</h2>
+            <p className="text-[#5C534D] text-base font-light mt-2">
+              Selecione uma categoria abaixo para conhecer nossos procedimentos e valores.
+            </p>
           </div>
 
-          {/* Premium Navigation Rail */}
-          <div className="flex overflow-x-auto gap-2 mb-10 border-b border-border-subtle no-scrollbar pb-3">
-            {categories.map((cat) => {
-              const isActive = activeCategory === cat.id;
-              return (
-                <button
-                  key={cat.id}
-                  onClick={() => setActiveCategory(cat.id)}
-                  className={`relative px-4 py-2.5 text-sm font-medium whitespace-nowrap transition-colors rounded-lg z-10 ${
-                    isActive ? 'text-[#70542D]' : 'text-text-secondary hover:text-espresso bg-transparent'
-                  }`}
-                >
-                  {isActive && (
-                    <motion.div 
-                      layoutId="serviceTabBackground"
-                      className="absolute inset-0 bg-champagne-soft rounded-lg -z-10"
-                      transition={{ duration: 0.25, ease: "easeOut" }}
-                    />
-                  )}
-                  {cat.name}
-                </button>
-              );
-            })}
+          {/* Category Tabs Carousel */}
+          <div className="relative mb-8">
+            <div 
+              className="flex gap-2 overflow-x-auto pb-2 scrollbar-thin scroll-smooth"
+              role="tablist"
+              aria-label="Categorias de serviços Cuidare"
+            >
+              {CATEGORIES.map(category => {
+                const isActive = activeCategory === category.id;
+                return (
+                  <button
+                    key={category.id}
+                    role="tab"
+                    aria-selected={isActive}
+                    onClick={() => setActiveCategory(category.id)}
+                    className={`min-h-[44px] px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold whitespace-nowrap transition-all duration-200 flex items-center gap-2 focus:outline-none focus:ring-2 focus:ring-[#C7A15D] ${
+                      isActive 
+                        ? 'bg-[#29231F] text-white shadow-sm' 
+                        : 'bg-[#F2ECE4] text-[#5C534D] hover:bg-[#E6DFD5]'
+                    }`}
+                  >
+                    <category.icon size={15} className={isActive ? 'text-[#C7A15D]' : 'opacity-70'} />
+                    <span>{category.name}</span>
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
-          {/* Clean Table/List Hybrid */}
-          <div className="space-y-2">
+          {/* Filtered Services List */}
+          <div className="grid gap-3 sm:gap-4">
             <AnimatePresence mode="popLayout">
               {filteredServices.map((service) => {
-                const profs = activeProfessionals.filter(p => p.categories.includes(service.category));
-                const isExternal = profs.length > 0 && profs.every(p => p.providerType === 'external_room_provider');
-                const firstProf = profs[0];
+                const isCourse = service.category === 'cursos';
 
                 return (
-                  <motion.div 
-                    layout
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -10 }}
-                    transition={{ duration: 0.25, ease: "easeOut" }}
+                  <motion.div
                     key={service.id}
-                    className="group flex flex-col md:flex-row md:items-center justify-between p-4 sm:p-6 bg-paper hover:bg-[#FBF7F1] border border-border-subtle hover:border-[rgba(199,161,93,0.18)] transition-colors rounded-sm gap-4"
+                    layout
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -8 }}
+                    transition={{ duration: 0.2 }}
+                    className="p-5 sm:p-6 bg-[#FFFDFB] border border-[#E6DFD5] rounded-2xl flex flex-col md:flex-row md:items-center justify-between gap-4 hover:border-[#C7A15D]/60 transition-colors shadow-xs"
                   >
-                    <div className="md:w-1/2">
-                      <h4 className="text-lg font-sans font-medium text-espresso mb-1 flex items-center gap-2">
-                        {service.name}
-                      </h4>
-                      <p className="text-text-secondary text-sm font-light leading-relaxed">
-                        {service.description}
-                      </p>
+                    <div className="space-y-1 md:w-3/5">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <h3 className="font-serif text-lg font-bold text-[#29231F]">{service.name}</h3>
+                        {service.flowBadge && (
+                          <span className="text-[10px] bg-[#FAF3E8] text-[#70542D] px-2 py-0.5 rounded font-semibold border border-[#E6DFD5]">
+                            {service.flowBadge}
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-xs sm:text-sm text-[#5C534D] font-light leading-relaxed">{service.description}</p>
                       {service.note && (
-                        <p className="text-[11px] text-[#70542D] italic font-serif mt-1 flex items-center gap-1">
-                          <Sparkles size={11} className="inline text-[#C7A15D]" /> {service.note}
+                        <p className="text-xs text-[#70542D] italic flex items-center gap-1 pt-0.5">
+                          <Sparkles size={12} className="text-[#C7A15D]" /> {service.note}
                         </p>
-                      )}
-                      {service.recommendations && service.recommendations.length > 0 && (
-                        <div className="mt-2 space-y-0.5">
-                          {service.recommendations.map((rec, rIdx) => (
-                            <p key={rIdx} className="text-[11px] text-taupe flex items-center gap-1.5">
-                              <span className="w-1 h-1 rounded-full bg-champagne inline-block" /> {rec}
-                            </p>
-                          ))}
-                        </div>
-                      )}
-                      {isExternal && (
-                        <span className="text-[10px] bg-warm-sand text-taupe px-2 py-1 rounded border border-border-subtle inline-block mt-2 font-medium">
-                          Atendimento independente
-                        </span>
                       )}
                     </div>
 
-                    <div className="flex items-center justify-between md:justify-end gap-6 md:gap-12 md:w-1/2">
-                      <div className="text-sm text-taupe flex flex-col">
-                        <span className="md:hidden text-[10px] uppercase tracking-wider mb-0.5 font-semibold text-text-secondary">Duração</span>
-                        {service.duration} min
+                    <div className="flex items-center justify-between md:justify-end gap-6 md:gap-8 md:w-2/5 pt-3 md:pt-0 border-t md:border-t-0 border-[#E6DFD5]">
+                      <div className="flex flex-col text-left md:text-right">
+                        <span className="text-[10px] uppercase font-bold text-[#7C736D] tracking-wider">Duração</span>
+                        <span className="text-xs sm:text-sm text-[#5C534D] font-medium">{service.duration} min</span>
                       </div>
-                      
-                      <div className="text-right flex flex-col min-w-[100px]">
-                        <span className="md:hidden text-[10px] uppercase tracking-wider mb-0.5 font-semibold text-text-secondary text-left">Valor</span>
-                        <span className="font-sans font-medium text-espresso">
+
+                      <div className="flex flex-col text-right min-w-[90px]">
+                        <span className="text-[10px] uppercase font-bold text-[#7C736D] tracking-wider">Valor</span>
+                        <span className="text-sm sm:text-base font-serif font-bold text-[#29231F]">
                           {getServiceFormattedPrice(service)}
                         </span>
                       </div>
 
-                      {service.category === 'cursos' ? (
+                      {isCourse ? (
                         <a
-                          href={`https://wa.me/5538992380097?text=${encodeURIComponent("Olá, Maísa! Vi o Curso de Penteado e Maquiagem para Iniciantes no site da Cuidare e gostaria de consultar informações, cronograma e valores.")}`}
+                          href={`https://wa.me/5538992380097?text=${encodeURIComponent("Olá, Maísa! Vi o Curso de Penteado e Maquiagem para Iniciantes no site da Cuidare e gostaria de consultar informações, turmas e inscrições.")}`}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="px-4 py-2 bg-champagne text-white text-xs font-semibold uppercase hover:bg-champagne-dark transition-colors whitespace-nowrap text-center rounded-sm"
+                          className="min-h-[44px] px-5 bg-[#C7A15D] text-white text-xs font-bold uppercase tracking-wider hover:bg-[#B38D4A] transition-colors rounded-xl flex items-center justify-center shrink-0"
                         >
                           Consultar Turmas
                         </a>
-                      ) : isExternal ? (
-                        <a
-                          href={`https://wa.me/${firstProf?.whatsapp?.replace(/\D/g, '') || '0000000000'}?text=Olá, ${firstProf?.name}! Vi seu atendimento pelo site da Cuidare e gostaria de saber sobre disponibilidade para ${service.name}.`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="px-4 py-2 border border-border-strong text-espresso text-xs font-semibold uppercase hover:bg-champagne hover:text-white hover:border-champagne transition-colors whitespace-nowrap text-center"
-                        >
-                          Consultar <br className="hidden sm:block"/> Disp.
-                        </a>
                       ) : (
                         <button
-                          onClick={() => onOpenBooking(service)}
-                          className="px-4 py-2 border border-border-strong text-espresso text-xs font-semibold uppercase hover:bg-espresso hover:text-white transition-colors"
+                          onClick={() => onOpenBooking({ service })}
+                          className="min-h-[44px] px-5 bg-[#29231F] text-white text-xs font-bold uppercase tracking-wider hover:bg-[#3D342E] transition-colors rounded-xl flex items-center justify-center shrink-0 focus:outline-none focus:ring-2 focus:ring-[#C7A15D]"
                         >
                           Agendar
                         </button>
@@ -400,103 +426,94 @@ export default function LandingPage({ onOpenBooking, onNavigateToAdmin, professi
             </AnimatePresence>
           </div>
           
-          <p className="text-[11px] text-taupe mt-8 uppercase tracking-widest text-center">
-            * Valores de referência, sujeitos à avaliação.
+          <p className="text-xs text-[#7C736D] mt-8 uppercase tracking-widest text-center">
+            * Valores e durações estimadas de referência, sujeitos à avaliação capilar.
           </p>
         </div>
       </section>
 
-      {/* COMPACT PROCESS STRIP */}
-      <section className="py-12 bg-[#F8F1E4] border-t border-border-subtle">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 md:gap-0 md:divide-x divide-champagne/20">
-            <div className="flex flex-col px-4 text-center md:text-left">
-              <span className="text-2xl font-serif text-champagne mb-2">01</span>
-              <h4 className="text-espresso font-semibold uppercase text-sm tracking-wider mb-1">Escolha</h4>
-              <p className="text-xs text-text-secondary">Selecione o serviço e, quando aplicável, a profissional.</p>
-            </div>
-            <div className="flex flex-col px-4 text-center md:text-left">
-              <span className="text-2xl font-serif text-champagne mb-2">02</span>
-              <h4 className="text-espresso font-semibold uppercase text-sm tracking-wider mb-1">Encontre seu horário</h4>
-              <p className="text-xs text-text-secondary">Veja apenas datas e horários realmente disponíveis.</p>
-            </div>
-            <div className="flex flex-col px-4 text-center md:text-left">
-              <span className="text-2xl font-serif text-champagne mb-2">03</span>
-              <h4 className="text-espresso font-semibold uppercase text-sm tracking-wider mb-1">Confirme</h4>
-              <p className="text-xs text-text-secondary">Informe seus dados e receba a confirmação do agendamento.</p>
-            </div>
-          </div>
-        </div>
-      </section>
-
       {/* PROFESSIONALS SECTION */}
-      <section id="profissionais" className="py-24 bg-paper border-t border-border-subtle">
+      <section id="profissionais" className="py-20 lg:py-24 bg-[#F5EFE6] border-t border-[#E6DFD5]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="mb-16 max-w-2xl">
-            <h2 className="text-[36px] lg:text-[48px] font-serif text-espresso mb-4">Nossa Equipe</h2>
-            <p className="text-text-secondary text-[17px]">Especialistas dedicadas a oferecer o melhor atendimento.</p>
+          
+          <div className="mb-12 max-w-2xl">
+            <span className="text-xs uppercase tracking-widest text-[#70542D] font-bold block mb-1">Corpo Profissional</span>
+            <h2 className="text-[32px] sm:text-[44px] font-serif text-[#29231F] font-normal">Nossa Equipe</h2>
+            <p className="text-[#5C534D] text-base font-light mt-2">
+              Especialistas dedicadas com atendimento humanizado e técnicas avançadas.
+            </p>
           </div>
 
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8">
             {activeProfessionals.map((prof) => {
               const initials = prof.name.split(' ').map(n => n[0]).join('').slice(0, 2);
+              const firstName = prof.name.split(' ')[0];
+
               return (
-                <div key={prof.id} className="flex flex-col">
-                  {/* Portrait setup: Real photo if available, or clean typographic monogram placeholder */}
-                  <div className="aspect-[4/5] bg-white flex flex-col justify-end p-6 relative border border-border-subtle group overflow-hidden rounded-sm">
+                <div key={prof.id} className="flex flex-col bg-[#FFFDFB] rounded-2xl border border-[#E6DFD5] overflow-hidden shadow-xs hover:shadow-md transition-shadow">
+                  {/* Portrait photo */}
+                  <div className="aspect-[4/5] bg-[#FAF8F5] relative overflow-hidden group">
                     {prof.photoUrl ? (
                       <img 
                         src={prof.photoUrl} 
-                        alt={prof.name} 
-                        className="absolute inset-0 w-full h-full object-cover object-top transition-transform duration-500 group-hover:scale-105" 
+                        alt={`Foto de ${prof.name}`} 
+                        width={600}
+                        height={750}
+                        loading="lazy"
+                        decoding="async"
+                        className="w-full h-full object-cover object-top transition-transform duration-500 group-hover:scale-103" 
                       />
                     ) : (
-                      <>
-                        <div className="absolute inset-0 bg-gradient-to-t from-[#29231F]/15 via-transparent to-transparent pointer-events-none" />
-                        <div className="absolute inset-0 flex items-center justify-center opacity-[0.09] group-hover:opacity-[0.14] transition-all duration-700 pointer-events-none">
-                          <span className={`text-[200px] font-serif leading-none tracking-tighter ${['text-champagne', 'text-terracotta', 'text-sage'][prof.id.charCodeAt(0) % 3]}`}>
-                            {initials}
-                          </span>
-                        </div>
-                      </>
+                      <div className="w-full h-full flex items-center justify-center bg-[#FAF3E8]">
+                        <span className="text-6xl font-serif text-[#C7A15D]">{initials}</span>
+                      </div>
                     )}
 
-                    {/* Badge de destaque (ex: Especialidade: Noivas) */}
+                    {/* Specialty Highlight Badge */}
                     {(prof.specialtyHighlight || prof.specialtyBadge) && (
-                      <div className="absolute top-4 left-4 z-20">
-                        <span className="px-3 py-1.5 bg-[#F8F1E4]/95 backdrop-blur-md text-[#70542D] text-[10px] font-bold tracking-widest rounded-md border border-[#E6D4B8] flex items-center gap-1.5 uppercase shadow-sm">
+                      <div className="absolute top-3 left-3 z-10">
+                        <span className="px-3 py-1 bg-[#FAF8F5]/95 backdrop-blur-sm text-[#70542D] text-[10px] font-bold tracking-wider rounded-md border border-[#E6DFD5] flex items-center gap-1 uppercase shadow-xs">
                           <Sparkles size={11} className="text-[#C7A15D]" /> {prof.specialtyHighlight || prof.specialtyBadge}
                         </span>
                       </div>
                     )}
+                  </div>
 
-                    <div className="relative z-10 bg-white/95 backdrop-blur-sm p-5 shadow-sm border border-border-subtle">
-                      <h3 className="text-xl font-serif text-espresso mb-1">{prof.name}</h3>
-                      <span className="text-xs uppercase font-medium text-taupe block mb-3 tracking-wider">{prof.role}</span>
+                  {/* Info & Booking Action */}
+                  <div className="p-5 flex flex-col grow justify-between space-y-4">
+                    <div className="space-y-1">
+                      <h3 className="text-xl font-serif font-bold text-[#29231F]">{prof.name}</h3>
+                      <span className="text-xs uppercase font-semibold text-[#70542D] tracking-wider block">{prof.role}</span>
+                      <p className="text-xs text-[#5C534D] font-light leading-relaxed pt-1">{prof.bio}</p>
                       
-                      <div className="flex flex-wrap gap-1.5 mb-5">
+                      <div className="flex flex-wrap gap-1.5 pt-3">
                         {prof.specialties.slice(0, 3).map((spec, i) => (
-                          <span key={i} className="text-[10px] px-2 py-0.5 bg-warm-sand text-taupe rounded-sm font-medium border border-border-subtle">
+                          <span key={i} className="text-[10px] px-2 py-0.5 bg-[#FAF3E8] text-[#70542D] rounded font-semibold border border-[#E6DFD5]">
                             {spec}
                           </span>
                         ))}
                       </div>
+                    </div>
 
+                    <div className="pt-2 border-t border-[#E6DFD5]">
                       {prof.id === 'lara' ? (
                         <a
                           href={`https://wa.me/${prof.whatsapp?.replace(/\D/g, '') || '5538991007706'}?text=${encodeURIComponent("Olá, Lara! Gostaria de informações sobre horários e agendamentos no Espaço Cuidare.")}`}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="text-sm font-medium text-espresso flex items-center gap-2 hover:text-champagne transition-colors group-hover:translate-x-1 duration-300"
+                          className="min-h-[44px] w-full flex items-center justify-between text-xs font-bold uppercase tracking-wider text-[#29231F] hover:text-[#70542D] transition-colors"
                         >
-                          Falar com Lara <ArrowRight size={14} />
+                          <span>Falar com Lara (Recepção)</span>
+                          <ArrowRight size={15} />
                         </a>
                       ) : (
                         <button
-                          onClick={() => onOpenBooking(undefined)}
-                          className="text-sm font-medium text-espresso flex items-center gap-2 hover:text-champagne transition-colors group-hover:translate-x-1 duration-300"
+                          onClick={() => onOpenBooking({ professional: prof })}
+                          aria-label={`Agendar horário com ${prof.name}`}
+                          className="min-h-[44px] w-full flex items-center justify-between text-xs font-bold uppercase tracking-wider text-[#29231F] hover:text-[#70542D] transition-colors focus:outline-none focus:ring-2 focus:ring-[#C7A15D] rounded-lg p-1"
                         >
-                          Agendar com {prof.name.split(' ')[0]} <ArrowRight size={14} />
+                          <span>Agendar com {firstName}</span>
+                          <ArrowRight size={15} />
                         </button>
                       )}
                     </div>
@@ -509,70 +526,100 @@ export default function LandingPage({ onOpenBooking, onNavigateToAdmin, professi
       </section>
 
       {/* LOCATION & HOURS */}
-      <section id="horarios" className="py-24 bg-warm-sand border-t border-border-subtle">
+      <section id="horarios" className="py-20 lg:py-24 bg-[#FAF8F5] border-t border-[#E6DFD5]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex flex-col lg:flex-row gap-16 lg:gap-24">
+          <div className="flex flex-col lg:flex-row gap-12 lg:gap-20 items-center">
             
-            {/* Image (55-60%) */}
-            <div className="lg:w-[55%]">
-              <div className="aspect-[4/3] bg-sand overflow-hidden rounded-md">
-                <img src="/background-hero.webp" alt="Ambiente Cuidare" className="w-full h-full object-cover opacity-90 mix-blend-multiply" />
+            {/* Map Atmosphere Image */}
+            <div className="lg:w-[50%] w-full">
+              <div className="aspect-[4/3] bg-[#F5EFE6] rounded-2xl overflow-hidden border border-[#E6DFD5] shadow-sm">
+                <img 
+                  src="/background-hero.webp" 
+                  alt="Ambiente de atendimento no Cuidare Espaço de Beleza" 
+                  width={800}
+                  height={600}
+                  loading="lazy"
+                  decoding="async"
+                  className="w-full h-full object-cover" 
+                />
               </div>
             </div>
 
-            {/* Info (40-45%) */}
-            <div className="lg:w-[45%] flex flex-col justify-center">
-              <h2 className="text-[36px] lg:text-[44px] font-serif text-espresso mb-10 leading-tight">Onde cuidar de você.</h2>
+            {/* Info */}
+            <div className="lg:w-[50%] space-y-8">
+              <div>
+                <span className="text-xs uppercase tracking-widest text-[#70542D] font-bold block mb-1">Localização</span>
+                <h2 className="text-[32px] sm:text-[40px] font-serif text-[#29231F] leading-tight font-normal">
+                  Onde cuidar de você.
+                </h2>
+              </div>
               
-              <div className="space-y-8">
+              <div className="space-y-6">
                 <div>
-                  <h4 className="text-sm font-semibold uppercase tracking-wider text-taupe mb-3 flex items-center gap-2"><MapPin size={16}/> Endereço</h4>
-                  <p className="text-text-primary text-[17px] font-medium">Rua Paracatu, 15, Centro</p>
-                  <p className="text-text-secondary mt-1">Taiobeiras - MG</p>
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-[#70542D] mb-2 flex items-center gap-1.5">
+                    <MapPin size={16} /> Endereço do Espaço
+                  </h3>
+                  <p className="text-[#29231F] text-base font-semibold">Rua Paracatu, 15, Centro</p>
+                  <p className="text-[#5C534D] text-sm">Taiobeiras - MG, CEP 39580-000</p>
+                  
+                  {/* Google Maps link */}
+                  <a 
+                    href="https://maps.google.com/?q=Rua+Paracatu,+15,+Centro,+Taiobeiras+-+MG"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 text-xs uppercase tracking-wider font-bold text-[#70542D] hover:text-[#29231F] mt-2 underline"
+                  >
+                    Como chegar pelo Google Maps <ArrowRight size={13} />
+                  </a>
                 </div>
 
                 <div>
-                  <h4 className="text-sm font-semibold uppercase tracking-wider text-taupe mb-3 flex items-center gap-2"><Clock size={16}/> Horários</h4>
-                  <ul className="space-y-3 text-[15px]">
-                    <li className="flex justify-between border-b border-border-subtle pb-2">
-                      <span className="text-text-secondary">Segunda</span>
-                      <span className="text-taupe uppercase text-xs font-semibold mt-0.5">Fechado</span>
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-[#70542D] mb-3 flex items-center gap-1.5">
+                    <Clock size={16} /> Horário de Funcionamento
+                  </h3>
+                  <ul className="space-y-2.5 text-sm text-[#29231F]">
+                    <li className="flex justify-between border-b border-[#E6DFD5] pb-2">
+                      <span className="text-[#5C534D]">Terça a Sexta</span>
+                      <span className="font-semibold text-right">08:00 às 11:30 • 14:00 às 18:00</span>
                     </li>
-                    <li className="flex justify-between border-b border-border-subtle pb-2">
-                      <span className="text-text-secondary">Terça a Sexta</span>
-                      <span className="text-text-primary font-medium text-right leading-tight">08:00 - 11:30<br/>14:00 - 18:00</span>
+                    <li className="flex justify-between border-b border-[#E6DFD5] pb-2">
+                      <span className="text-[#5C534D]">Sábado</span>
+                      <span className="font-semibold">08:00 às 18:00 (direto)</span>
                     </li>
-                    <li className="flex justify-between pb-2">
-                      <span className="text-text-secondary">Sábado</span>
-                      <span className="text-text-primary font-medium">08:00 - 18:00</span>
+                    <li className="flex justify-between pb-1">
+                      <span className="text-[#5C534D]">Domingo e Segunda</span>
+                      <span className="text-[#7C736D] uppercase text-xs font-semibold">Fechado*</span>
                     </li>
                   </ul>
+                  <p className="text-[11px] text-[#7C736D] mt-2 italic">
+                    * Atendimento de Noivas, Debutantes e produções de eventos sob agendamento prévio.
+                  </p>
                 </div>
 
-                {/* Social links rendered only when destinations exist */}
-                <div className="flex gap-4 pt-4">
-                  {getBusinessSettings().instagramUrl ? (
+                {/* Social contacts */}
+                <div className="flex gap-3 pt-2">
+                  {getBusinessSettings().instagramUrl && (
                     <a 
                       href={getBusinessSettings().instagramUrl}
                       target="_blank" 
                       rel="noopener noreferrer"
-                      className="flex items-center justify-center w-12 h-12 rounded-full border border-border-strong text-espresso hover:bg-espresso hover:text-white transition-colors"
-                      aria-label="Instagram Cuidare"
+                      className="min-h-[44px] px-4 rounded-xl border border-[#DDD6CC] text-[#29231F] hover:bg-[#29231F] hover:text-white transition-colors flex items-center gap-2 text-xs font-semibold"
+                      aria-label="Seguir o Espaço Cuidare no Instagram"
                     >
-                      <Instagram size={20} />
+                      <Instagram size={16} /> Instagram
                     </a>
-                  ) : null}
-                  {getBusinessSettings().businessWhatsapp ? (
+                  )}
+                  {getBusinessSettings().businessWhatsapp && (
                     <a 
                       href={`https://wa.me/${getBusinessSettings().businessWhatsapp?.replace(/\D/g, '')}`}
                       target="_blank" 
                       rel="noopener noreferrer"
-                      className="flex items-center justify-center w-12 h-12 rounded-full border border-border-strong text-espresso hover:bg-espresso hover:text-white transition-colors"
-                      aria-label="WhatsApp Cuidare"
+                      className="min-h-[44px] px-4 rounded-xl border border-[#DDD6CC] text-[#29231F] hover:bg-[#29231F] hover:text-white transition-colors flex items-center gap-2 text-xs font-semibold"
+                      aria-label="Falar com a recepção do Espaço Cuidare no WhatsApp"
                     >
-                      <Phone size={20} />
+                      <Phone size={16} /> WhatsApp da Recepção
                     </a>
-                  ) : null}
+                  )}
                 </div>
               </div>
             </div>
@@ -582,42 +629,49 @@ export default function LandingPage({ onOpenBooking, onNavigateToAdmin, professi
       </section>
 
       {/* FINAL CTA */}
-      <section className="bg-deep-espresso py-24 lg:py-32 relative overflow-hidden flex flex-col items-center justify-center min-h-[480px]">
-        {/* Very subtle glow */}
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(198,162,95,0.08)_0%,transparent_60%)] pointer-events-none" />
-        
-        <div className="max-w-3xl mx-auto px-4 text-center z-10 relative">
-          <div className="w-12 h-px bg-champagne/45 mx-auto mb-6" />
-          <h2 className="text-[40px] sm:text-[56px] font-serif text-white mb-6 leading-tight">
-            Seu momento de <span className="text-champagne font-serif italic">cuidado</span> começa aqui.
+      <section className="bg-[#29231F] py-20 lg:py-28 relative overflow-hidden flex flex-col items-center justify-center text-center">
+        <div className="max-w-3xl mx-auto px-4 z-10 space-y-6">
+          <div className="w-12 h-px bg-[#C7A15D] mx-auto" />
+          <h2 className="text-[34px] sm:text-[48px] font-serif text-white font-normal leading-tight">
+            Seu momento de <span className="text-[#C7A15D] italic">cuidado</span> começa aqui.
           </h2>
-          <p className="text-[#C8C2BE] text-base lg:text-[19px] leading-relaxed mb-10 max-w-2xl mx-auto font-light">
-            Escolha o serviço, encontre o melhor horário disponível e agende seu momento de cuidado com total exclusividade.
+          <p className="text-[#C8C2BE] text-base leading-relaxed max-w-xl mx-auto font-light">
+            Escolha o serviço, selecione a data no calendário e agende seu horário com total comodidade.
           </p>
           <button
             onClick={() => onOpenBooking()}
-            className="h-14 px-10 bg-ivory text-espresso font-medium hover:bg-champagne hover:text-deep-espresso transition-colors rounded-sm"
+            className="min-h-[48px] px-8 bg-white text-[#29231F] text-xs font-bold uppercase tracking-wider rounded-xl hover:bg-[#C7A15D] hover:text-white transition-all shadow-sm active:scale-95"
           >
-            Agendar meu horário
+            Agendar meu horário online
           </button>
         </div>
       </section>
 
       {/* FOOTER */}
-      <footer className="bg-espresso pt-16 pb-8 border-t border-white/5">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-8 mb-12">
-            <Logo className="h-8 w-auto text-white" />
-            <div className="flex flex-wrap gap-6 text-[13px] text-[#A69E9A]">
+      <footer className="bg-[#1F1A17] pt-14 pb-8 border-t border-white/10 text-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-10">
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+            <div className="flex items-center gap-3">
+              <Logo className="h-8 w-auto text-white" />
+              <span className="font-serif tracking-widest font-bold text-sm">CUIDARE</span>
+            </div>
+            <nav className="flex flex-wrap gap-6 text-xs text-[#A69E9A]" aria-label="Links do rodapé">
               <a href="#sobre" className="hover:text-white transition-colors">O Espaço</a>
               <a href="#servicos" className="hover:text-white transition-colors">Serviços</a>
               <a href="#profissionais" className="hover:text-white transition-colors">Equipe</a>
-              <a href="#horarios" className="hover:text-white transition-colors">Contato</a>
-            </div>
+              <a href="#horarios" className="hover:text-white transition-colors">Horários & Local</a>
+              <button 
+                type="button"
+                onClick={() => setPrivacyOpen(true)}
+                className="hover:text-white transition-colors underline"
+              >
+                Privacidade & Cancelamento
+              </button>
+            </nav>
           </div>
           
-          <div className="flex flex-col md:flex-row justify-between items-center gap-4 pt-8 border-t border-white/10 text-[11px] text-[#7A716C] uppercase tracking-widest">
-            <span>© 2026 Cuidare Espaço de Beleza.</span>
+          <div className="flex flex-col sm:flex-row justify-between items-center gap-4 pt-6 border-t border-white/10 text-[11px] text-[#8C837C]">
+            <span>© 2026 Cuidare Espaço de Beleza & Saúde. Taiobeiras - MG.</span>
             <button 
               onClick={onNavigateToAdmin}
               className="hover:text-white transition-colors underline underline-offset-4"
@@ -627,6 +681,8 @@ export default function LandingPage({ onOpenBooking, onNavigateToAdmin, professi
           </div>
         </div>
       </footer>
+
+      <PrivacyPolicyModal isOpen={privacyOpen} onClose={() => setPrivacyOpen(false)} />
     </div>
   );
 }
