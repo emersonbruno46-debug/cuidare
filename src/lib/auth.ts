@@ -46,125 +46,41 @@ function saveAccounts(accounts: StoredAccount[]): void {
   localStorage.setItem(ACCOUNTS_KEY, JSON.stringify(accounts));
 }
 
-// ── Seed default admin account on first run
+// ── Contas padrão
+// As contas com senha de demonstração só existem no ambiente local (npm run dev).
+// No build de produção esse trecho é removido pelo Vite, então nenhuma senha
+// vai para o site publicado. O login real virá do Supabase Auth.
+const REMOVED_EMAILS = new Set([
+  'fernanda@cuidare.com.br',
+  'rosy@cuidare.com.br',
+  'geovanna@cuidare.com.br',
+  'roberta@cuidare.com.br',
+  'fabiana@cuidare.com.br',
+  'tania@cuidare.com.br'
+]);
+
 export function seedDefaultAccounts(): void {
-  let accounts = getAccounts();
-  const removedEmails = new Set([
-    'fernanda@cuidare.com.br',
-    'rosy@cuidare.com.br',
-    'geovanna@cuidare.com.br',
-    'roberta@cuidare.com.br',
-    'fabiana@cuidare.com.br'
-  ]);
+  const stored = getAccounts();
 
-  if (accounts.length > 0) {
-    let changed = false;
-    // Remove obsolete users
-    const filtered = accounts.filter(a => !removedEmails.has(a.email.toLowerCase()));
-    if (filtered.length !== accounts.length) {
-      accounts = filtered;
-      changed = true;
-    }
+  // Remove contas de quem saiu da equipe (vale para todos os ambientes)
+  const accounts = stored.filter(
+    a => !REMOVED_EMAILS.has(a.email.toLowerCase()) && a.professionalId !== 'tania'
+  );
+  if (accounts.length !== stored.length) saveAccounts(accounts);
 
-    // Add Fabiane if missing
-    if (!accounts.some(a => a.email === 'fabiane@cuidare.com.br')) {
-      accounts.push({
-        id: 'user_fabiane',
-        email: 'fabiane@cuidare.com.br',
-        name: 'Fabiane',
-        role: 'collaborator',
-        professionalId: 'fabiane',
-        passwordHash: mockHash('cuidare2024'),
-        active: true
-      });
-      changed = true;
-    }
+  if (!import.meta.env.DEV) return;
 
-    // Add Lara if missing
-    if (!accounts.some(a => a.email === 'lara@cuidare.com.br')) {
-      accounts.push({
-        id: 'user_lara',
-        email: 'lara@cuidare.com.br',
-        name: 'Lara',
-        role: 'collaborator',
-        professionalId: 'lara',
-        passwordHash: mockHash('cuidare2024'),
-        active: true
-      });
-      changed = true;
-    }
-
-    // Remove Tânia if present
-    const taniaIndex = accounts.findIndex(a => a.email === 'tania@cuidare.com.br' || a.professionalId === 'tania');
-    if (taniaIndex !== -1) {
-      accounts.splice(taniaIndex, 1);
-      changed = true;
-    }
-
-    if (changed) {
-      saveAccounts(accounts);
-    }
-    return;
-  }
-
-  const defaultAccounts: StoredAccount[] = [
-    {
-      id: 'user_admin_lane',
-      email: 'lane@cuidare.com.br',
-      name: 'Lane Viana',
-      role: 'admin',
-      passwordHash: mockHash('cuidare2024admin'),
-      active: true
-    },
-    // Collaborators — active team members
-    {
-      id: 'user_evelyn',
-      email: 'evelyn@cuidare.com.br',
-      name: 'Evelyn',
-      role: 'collaborator',
-      professionalId: 'evelyn',
-      passwordHash: mockHash('cuidare2024'),
-      active: true
-    },
-    {
-      id: 'user_railma',
-      email: 'railma@cuidare.com.br',
-      name: 'Railma',
-      role: 'collaborator',
-      professionalId: 'railma',
-      passwordHash: mockHash('cuidare2024'),
-      active: true
-    },
-    {
-      id: 'user_maisa',
-      email: 'maisa@cuidare.com.br',
-      name: 'Maísa Rodrigues',
-      role: 'collaborator',
-      professionalId: 'maisa',
-      passwordHash: mockHash('cuidare2024'),
-      active: true
-    },
-    {
-      id: 'user_fabiane',
-      email: 'fabiane@cuidare.com.br',
-      name: 'Fabiane',
-      role: 'collaborator',
-      professionalId: 'fabiane',
-      passwordHash: mockHash('cuidare2024'),
-      active: true
-    },
-    {
-      id: 'user_lara',
-      email: 'lara@cuidare.com.br',
-      name: 'Lara',
-      role: 'collaborator',
-      professionalId: 'lara',
-      passwordHash: mockHash('cuidare2024'),
-      active: true
-    }
+  const devAccounts: StoredAccount[] = [
+    { id: 'user_admin_lane', email: 'lane@cuidare.com.br', name: 'Lane Viana', role: 'admin', passwordHash: mockHash('cuidare2024admin'), active: true },
+    { id: 'user_evelyn', email: 'evelyn@cuidare.com.br', name: 'Evelyn', role: 'collaborator', professionalId: 'evelyn', passwordHash: mockHash('cuidare2024'), active: true },
+    { id: 'user_railma', email: 'railma@cuidare.com.br', name: 'Railma', role: 'collaborator', professionalId: 'railma', passwordHash: mockHash('cuidare2024'), active: true },
+    { id: 'user_maisa', email: 'maisa@cuidare.com.br', name: 'Maísa Rodrigues', role: 'collaborator', professionalId: 'maisa', passwordHash: mockHash('cuidare2024'), active: true },
+    { id: 'user_fabiane', email: 'fabiane@cuidare.com.br', name: 'Fabiane', role: 'collaborator', professionalId: 'fabiane', passwordHash: mockHash('cuidare2024'), active: true },
+    { id: 'user_lara', email: 'lara@cuidare.com.br', name: 'Lara', role: 'collaborator', professionalId: 'lara', passwordHash: mockHash('cuidare2024'), active: true }
   ];
 
-  saveAccounts(defaultAccounts);
+  const missing = devAccounts.filter(d => !accounts.some(a => a.email === d.email));
+  if (missing.length > 0) saveAccounts([...accounts, ...missing]);
 }
 
 // ── Auth functions

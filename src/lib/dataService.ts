@@ -764,7 +764,33 @@ export function getAuditLogs(limit = 100): AuditLog[] {
 // DEMO DATA SEEDING (RESTRICTED TO DEMO MODE)
 // ─────────────────────────────────────
 
+// Pares nome + telefone dos agendamentos fictícios gravados por versões antigas do site.
+const LEGACY_DEMO_CLIENTS = new Set([
+  'Ana Paula Santos|5538988451243', 'Beatriz Souza|5538991223847', 'Camila Lima|5538998231122',
+  'Débora Santos|5538991045544', 'Amanda Silva|5538992014477', 'Juliana Costa|5538988227711',
+  'Patrícia Alves|5538991448855', 'Letícia Dias|5538999205521', 'Bruna Gomes|5538992001122',
+  'Sofia Melo|5538991823847'
+]);
+
+/** Remove do navegador os agendamentos fictícios antigos, sem tocar em agendamentos reais. */
+function removeLegacyDemoData(): void {
+  if (!localStorage.getItem(KEYS.demoSeeded)) return;
+  const bookings = getList<Booking>(KEYS.bookings);
+  const demoIds = new Set(
+    bookings.filter(b => LEGACY_DEMO_CLIENTS.has(`${b.clientName}|${b.clientPhone}`)).map(b => b.id)
+  );
+  if (demoIds.size > 0) {
+    setList(KEYS.bookings, bookings.filter(b => !demoIds.has(b.id)));
+    setList(KEYS.history, getList<ClientHistoryEntry>(KEYS.history).filter(h => !h.bookingId || !demoIds.has(h.bookingId)));
+    setList(KEYS.notifications, getList<NotificationJob>(KEYS.notifications).filter(n => !demoIds.has(n.bookingId)));
+    setList(KEYS.clients, []); // reconstruído logo abaixo a partir dos agendamentos restantes
+  }
+  localStorage.removeItem(KEYS.demoSeeded);
+}
+
 export function seedDemoData(): void {
+  if (!import.meta.env.DEV) removeLegacyDemoData();
+
   // Check if demo data is already initialized
   const seededFlag = localStorage.getItem(KEYS.demoSeeded);
   const existingBookings = getList<Booking>(KEYS.bookings);
@@ -773,6 +799,9 @@ export function seedDemoData(): void {
     rebuildClientsFromBookings();
     return;
   }
+
+  // Agendamentos fictícios só no ambiente local (npm run dev), nunca no site publicado.
+  if (!import.meta.env.DEV) return;
 
   // Populate initial demo data ONLY on first launch of demo workspace
   const getRelativeDate = (offsetDays: number) => {

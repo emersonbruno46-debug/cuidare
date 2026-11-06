@@ -156,15 +156,17 @@ export function LoginPage({ role }: LoginPageProps) {
             </button>
           </form>
 
-          {/* Demo hint */}
-          <div className="mt-6 p-3 bg-[#F8F5F0] rounded-lg border border-[rgba(37,27,23,0.08)]">
-            <p className="text-[11px] text-[#756B65] text-center">
-              {isAdmin
-                ? <><strong>Demo:</strong> lane@cuidare.com.br / cuidare2024admin</>
-                : <><strong>Demo:</strong> railma@cuidare.com.br / cuidare2024</>
-              }
-            </p>
-          </div>
+          {/* Dica de acesso de demonstração: só no ambiente local (npm run dev) */}
+          {import.meta.env.DEV && (
+            <div className="mt-6 p-3 bg-[#F8F5F0] rounded-lg border border-[rgba(37,27,23,0.08)]">
+              <p className="text-[11px] text-[#756B65] text-center">
+                {isAdmin
+                  ? <><strong>Demo:</strong> lane@cuidare.com.br / cuidare2024admin</>
+                  : <><strong>Demo:</strong> railma@cuidare.com.br / cuidare2024</>
+                }
+              </p>
+            </div>
+          )}
         </div>
 
         {/* Back */}
