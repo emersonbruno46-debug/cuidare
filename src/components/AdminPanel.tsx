@@ -9,13 +9,14 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   DollarSign, Calendar, Users, ArrowLeft,
   AlertCircle, Search, LayoutDashboard,
-  Award, Bell, Menu, Settings, UserCog, LogOut
+  Award, Bell, Menu, Settings, UserCog, LogOut, KeyRound, RefreshCw
 } from 'lucide-react';
 import type { Booking, Client, AuthUser } from '../types';
 import {
-  getBookings, getClients, getProfessionals, seedDemoData
+  getBookings, getClients, getProfessionals, loadStaffData, clearStaffData, useDataVersion
 } from '../lib/dataService';
-import { signOut, seedDefaultAccounts } from '../lib/auth';
+import { signOut, updateMyPassword } from '../lib/auth';
+import { getNowInSaoPaulo } from '../lib/dateUtils';
 import CalendarView from './admin/CalendarView';
 import AppointmentModal from './admin/AppointmentModal';
 import NewAppointmentForm from './admin/NewAppointmentForm';
@@ -43,15 +44,35 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
   const [newAppointmentDate, setNewAppointmentDate] = useState<string | undefined>(undefined);
   const [showNewAppointment, setShowNewAppointment] = useState(false);
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
-  const [refreshKey, setRefreshKey] = useState(0);
+  const [loadState, setLoadState] = useState<'loading' | 'ready' | 'error'>('loading');
+  const [syncing, setSyncing] = useState(false);
+  const [showPasswordForm, setShowPasswordForm] = useState(false);
+  useDataVersion(); // redesenha quando os dados do banco chegam ou mudam
 
-  const refresh = useCallback(() => setRefreshKey(k => k + 1), []);
-
-  // Seed on mount
-  useEffect(() => {
-    seedDefaultAccounts();
-    seedDemoData();
+  // Busca de novo os dados no banco (agendamentos novos do site, alterações de outras pessoas...)
+  const refresh = useCallback(async () => {
+    setSyncing(true);
+    try {
+      await loadStaffData();
+      setLoadState('ready');
+    } catch {
+      setLoadState(prev => (prev === 'ready' ? 'ready' : 'error'));
+    } finally {
+      setSyncing(false);
+    }
   }, []);
+
+  // Carrega ao abrir, a cada 1 minuto e quando a pessoa volta para a aba do painel
+  useEffect(() => {
+    refresh();
+    const timer = window.setInterval(refresh, 60_000);
+    const onFocus = () => { if (document.visibilityState === 'visible') refresh(); };
+    document.addEventListener('visibilitychange', onFocus);
+    return () => {
+      window.clearInterval(timer);
+      document.removeEventListener('visibilitychange', onFocus);
+    };
+  }, [refresh]);
 
   const isAdmin = currentUser.role === 'admin';
 
@@ -75,7 +96,7 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
   const getPeriodBookings = () => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    const todayStr = today.toISOString().split('T')[0];
+    const todayStr = getNowInSaoPaulo().todayStr; // data de hoje no fuso do salão
 
     return bookings.filter(b => {
       const bDate = new Date(b.date + 'T00:00:00');
@@ -163,8 +184,9 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
     { id: 'configuracoes' as AdminTab, name: 'Configurações', icon: Settings, adminOnly: true },
   ].filter(item => !item.adminOnly || isAdmin);
 
-  const handleLogout = () => {
-    signOut();
+  const handleLogout = async () => {
+    clearStaffData();
+    await signOut();
     navigate('/acesso');
   };
 
@@ -214,6 +236,12 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
       </div>
 
       <div className="px-2 space-y-2">
+        <button
+          onClick={() => { setShowPasswordForm(true); setMobileSidebarOpen(false); }}
+          className="w-full flex items-center justify-center gap-2 py-2.5 text-[#7C736D] hover:text-[#29231F] hover:bg-gray-100 rounded-md text-xs font-medium transition-colors"
+        >
+          <KeyRound size={14} /> Trocar minha senha
+        </button>
         <button
           onClick={handleLogout}
           className="w-full flex items-center justify-center gap-2 py-2.5 text-[#7C736D] hover:text-[#29231F] hover:bg-gray-100 rounded-md text-xs font-medium transition-colors"
@@ -279,15 +307,43 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
           <div className="flex items-center gap-3">
             <div className="hidden sm:flex items-center gap-1.5 px-3 py-1 bg-[#E3E9E1] text-[#71806F] rounded-full text-xs font-semibold">
               <span className="w-1.5 h-1.5 rounded-full bg-[#71806F] animate-pulse" />
-              Online
+              {syncing ? 'Atualizando...' : 'Online'}
             </div>
-            <button className="p-2 rounded-md hover:bg-gray-100 text-gray-600 transition-colors">
+            <button
+              onClick={refresh}
+              disabled={syncing}
+              title="Atualizar agora"
+              aria-label="Atualizar agora"
+              className="p-2 rounded-md hover:bg-gray-100 text-gray-600 transition-colors disabled:opacity-50"
+            >
+              <RefreshCw size={18} className={syncing ? 'animate-spin' : ''} />
+            </button>
+            <button className="p-2 rounded-md hover:bg-gray-100 text-gray-600 transition-colors" aria-label="Notificações">
               <Bell size={18} />
             </button>
           </div>
         </header>
 
-        <main className="flex-1 p-5 lg:p-8 max-w-7xl w-full mx-auto" key={refreshKey}>
+        <main className="flex-1 p-5 lg:p-8 max-w-7xl w-full mx-auto">
+          {loadState !== 'ready' ? (
+            <div className="flex flex-col items-center justify-center py-24 gap-4 text-center">
+              {loadState === 'loading' ? (
+                <>
+                  <div className="w-10 h-10 border-4 border-[#C7A15D] border-t-transparent rounded-full animate-spin" />
+                  <span className="text-xs uppercase tracking-widest text-[#7C736D] font-semibold">Carregando agenda...</span>
+                </>
+              ) : (
+                <>
+                  <AlertCircle size={28} className="text-red-500" />
+                  <p className="text-sm text-[#29231F] font-semibold">Não foi possível carregar os dados.</p>
+                  <p className="text-xs text-[#7C736D]">Verifique sua internet e tente de novo.</p>
+                  <button onClick={refresh} className="px-4 py-2 bg-[#251B17] text-white rounded-lg text-sm font-semibold">
+                    Tentar de novo
+                  </button>
+                </>
+              )}
+            </div>
+          ) : (
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
 
             {/* DASHBOARD */}
@@ -519,6 +575,7 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
             {activeTab === 'configuracoes' && isAdmin && <BusinessSettingsPanel />}
 
           </motion.div>
+          )}
         </main>
       </div>
 
@@ -527,7 +584,7 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
         <AppointmentModal
           booking={selectedBooking}
           onClose={() => setSelectedBooking(null)}
-          onUpdated={() => { refresh(); setSelectedBooking(null); }}
+          onUpdated={() => setSelectedBooking(null)}
           currentUser={currentUser}
         />
       )}
@@ -537,9 +594,11 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
           initialDate={newAppointmentDate}
           currentUser={currentUser}
           onClose={() => setShowNewAppointment(false)}
-          onCreated={() => { refresh(); setShowNewAppointment(false); }}
+          onCreated={() => setShowNewAppointment(false)}
         />
       )}
+
+      {showPasswordForm && <ChangePasswordModal onClose={() => setShowPasswordForm(false)} />}
 
       {selectedClient && (
         <ClientDetail
@@ -548,6 +607,63 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
           currentUser={currentUser}
         />
       )}
+    </div>
+  );
+}
+
+
+/** Troca de senha de quem está logado (ex.: no primeiro acesso, com a senha inicial). */
+function ChangePasswordModal({ onClose }: { onClose: () => void }) {
+  const [password, setPassword] = useState('');
+  const [confirm, setConfirm] = useState('');
+  const [error, setError] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [done, setDone] = useState(false);
+
+  const handleSave = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    if (password !== confirm) { setError('As duas senhas não são iguais.'); return; }
+    setSaving(true);
+    const err = await updateMyPassword(password);
+    setSaving(false);
+    if (err) setError(err);
+    else setDone(true);
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="change-password-title">
+      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
+      <form onSubmit={handleSave} className="relative bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 space-y-4">
+        <h3 id="change-password-title" className="font-semibold text-[#29231F]">Trocar minha senha</h3>
+        {done ? (
+          <>
+            <p className="text-sm text-emerald-700">Senha trocada com sucesso. Use a nova senha no próximo acesso.</p>
+            <button type="button" onClick={onClose} className="w-full h-10 bg-[#251B17] text-white rounded-lg text-sm font-semibold">Fechar</button>
+          </>
+        ) : (
+          <>
+            <div>
+              <label className="block text-[11px] uppercase tracking-wider font-semibold text-[#756B65] mb-1">Nova senha</label>
+              <input type="password" value={password} onChange={e => setPassword(e.target.value)} autoComplete="new-password"
+                placeholder="Mínimo 8 caracteres"
+                className="w-full h-10 px-3 border border-[rgba(37,27,23,0.12)] rounded-lg text-sm focus:outline-none focus:border-[#C7A15D]" />
+            </div>
+            <div>
+              <label className="block text-[11px] uppercase tracking-wider font-semibold text-[#756B65] mb-1">Repita a nova senha</label>
+              <input type="password" value={confirm} onChange={e => setConfirm(e.target.value)} autoComplete="new-password"
+                className="w-full h-10 px-3 border border-[rgba(37,27,23,0.12)] rounded-lg text-sm focus:outline-none focus:border-[#C7A15D]" />
+            </div>
+            {error && <p className="text-xs text-red-600">{error}</p>}
+            <div className="flex gap-2">
+              <button type="button" onClick={onClose} className="flex-1 h-10 border border-gray-200 rounded-lg text-sm hover:bg-gray-50">Cancelar</button>
+              <button type="submit" disabled={saving} className="flex-1 h-10 bg-[#251B17] text-white rounded-lg text-sm font-semibold disabled:opacity-60">
+                {saving ? 'Salvando...' : 'Salvar'}
+              </button>
+            </div>
+          </>
+        )}
+      </form>
     </div>
   );
 }

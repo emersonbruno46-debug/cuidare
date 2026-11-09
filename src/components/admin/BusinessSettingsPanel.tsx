@@ -6,7 +6,8 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Save, Instagram, Phone, MapPin, Clock, AlertCircle, Check } from 'lucide-react';
-import { getBusinessSettings, updateBusinessSettings } from '../../lib/businessSettings';
+import { getBusinessSettings } from '../../lib/businessSettings';
+import { updateBusinessSettings } from '../../lib/dataService';
 
 const DAYS_PT = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
 
@@ -14,11 +15,18 @@ export default function BusinessSettingsPanel() {
   const [settings, setSettings] = useState(() => getBusinessSettings());
   const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState('');
 
-  const handleSave = () => {
+  const handleSave = async () => {
     setSaving(true);
-    updateBusinessSettings(settings);
+    setSaveError('');
+    const result = await updateBusinessSettings(settings);
     setSaving(false);
+    if (result.error) {
+      setSaveError(result.error);
+      return;
+    }
+    setSettings(getBusinessSettings());
     setSaved(true);
     setTimeout(() => setSaved(false), 2500);
   };
@@ -34,6 +42,11 @@ export default function BusinessSettingsPanel() {
 
   return (
     <div className="space-y-6">
+      {saveError && (
+        <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700" role="alert">
+          <AlertCircle size={14} /> {saveError}
+        </div>
+      )}
       <div className="flex items-center justify-between">
         <h3 className="font-semibold text-[#29231F]">Configurações do Negócio</h3>
         <motion.button

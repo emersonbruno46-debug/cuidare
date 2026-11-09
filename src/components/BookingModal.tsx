@@ -1,15 +1,15 @@
 import { useState, useEffect, useRef, useId } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  X, User, MessageSquare, Check, Phone, Mail, 
-  ArrowLeft, ArrowRight, Search, Sparkles, MapPin, 
+import {
+  X, User, MessageSquare, Check, Phone, Mail,
+  ArrowLeft, ArrowRight, Search, Sparkles, MapPin,
   AlertCircle, ShieldCheck, Clock, UserCheck
 } from 'lucide-react';
 import { services } from '../data/servicesData';
 import { professionals as defaultProfessionals } from '../data/professionalsData';
 import { CATEGORIES } from '../data/categoriesData';
 import type { Service, Professional, Booking } from '../types';
-import { getAvailableSlots, findAvailableProfessionalForSlot } from '../lib/availability';
+import { fetchAvailableSlots, createPublicBooking, type PublicSlot } from '../lib/dataService';
 import { buildWhatsAppLink } from '../lib/businessSettings';
 import { getNextBusinessDays, formatDateLabel } from '../lib/dateUtils';
 import { serviceMatchesQuery } from '../lib/searchUtils';
@@ -20,18 +20,14 @@ interface BookingModalProps {
   onClose: () => void;
   initialService?: Service;
   initialProfessional?: Professional;
-  existingBookings: Booking[];
-  onAddBooking: (booking: Omit<Booking, 'id' | 'createdAt'>) => { booking: Booking | null; error?: string } | Promise<{ booking: Booking | null; error?: string }>;
   professionals?: Professional[];
 }
 
-export default function BookingModal({ 
-  isOpen, 
-  onClose, 
-  initialService, 
+export default function BookingModal({
+  isOpen,
+  onClose,
+  initialService,
   initialProfessional,
-  existingBookings, 
-  onAddBooking,
   professionals: propProfessionals
 }: BookingModalProps) {
   const activeProfessionals = propProfessionals || defaultProfessionals;
@@ -54,13 +50,19 @@ export default function BookingModal({
   const [clientNotes, setClientNotes] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategoryFilter, setSelectedCategoryFilter] = useState<string>('todos');
-  
+
   // Modals & Submission
   const [privacyOpen, setPrivacyOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<{ name?: string; phone?: string }>({});
   const [savedBooking, setSavedBooking] = useState<Booking | null>(null);
+
+  // Horários livres (calculados pelo banco)
+  const [slots, setSlots] = useState<PublicSlot[]>([]);
+  const [slotsLoading, setSlotsLoading] = useState(false);
+  const [slotsError, setSlotsError] = useState<string | null>(null);
+  const [slotsReload, setSlotsReload] = useState(0);
 
   // Focus trap refs
   const modalBoxRef = useRef<HTMLDivElement>(null);
@@ -109,6 +111,24 @@ export default function BookingModal({
     }
   }, [isOpen, initialService, initialProfessional]);
 
+  // Busca os horários livres no banco sempre que serviço, profissional ou data mudam
+  const serviceIdForSlots = selectedService?.id;
+  const professionalIdForSlots = selectedProfessional?.id ?? null;
+  useEffect(() => {
+    if (!isOpen || !serviceIdForSlots || !selectedDate) {
+      setSlots([]);
+      return;
+    }
+    let cancelled = false;
+    setSlotsLoading(true);
+    setSlotsError(null);
+    fetchAvailableSlots(serviceIdForSlots, selectedDate, professionalIdForSlots)
+      .then(result => { if (!cancelled) setSlots(result); })
+      .catch(() => { if (!cancelled) { setSlots([]); setSlotsError('Não foi possível carregar os horários. Verifique sua internet.'); } })
+      .finally(() => { if (!cancelled) setSlotsLoading(false); });
+    return () => { cancelled = true; };
+  }, [isOpen, serviceIdForSlots, professionalIdForSlots, selectedDate, slotsReload]);
+
   // Focus trap inside modal
   useEffect(() => {
     if (!isOpen) return;
@@ -150,7 +170,7 @@ export default function BookingModal({
   if (!isOpen) return null;
 
   // Filter professionals that perform the selected service
-  const eligibleProfessionals = selectedService 
+  const eligibleProfessionals = selectedService
     ? activeProfessionals.filter(p => {
         if (p.active === false) return false;
         if (selectedService.professionalIds && selectedService.professionalIds.length > 0) {
@@ -178,28 +198,19 @@ export default function BookingModal({
   // Calendar days generated deterministically in America/Sao_Paulo timezone
   const calendarDays = getNextBusinessDays(14);
 
-  // Real available slots for the selected date, respecting business hours, breaks, blocks and overlap
-  const availableTimeSlots = getAvailableSlots(
-    selectedDate, 
-    selectedProfessional?.id || null, 
-    selectedService?.duration || 30, 
-    existingBookings,
-    eligibleProfessionals
-  );
+  // Horários livres da data escolhida (expediente, almoço, folgas e outros agendamentos já descontados pelo banco)
+  const availableTimeSlots = slots.map(s => s.time);
 
-  // Auto-allocate first available professional for slot checking full duration overlap
+  // "Primeira disponível": mostra quem o banco indicou como livre nesse horário.
+  // Na hora de gravar, o próprio banco escolhe de novo, para evitar reserva dupla.
   const determineProfessional = (): Professional => {
+    if (savedBooking) {
+      const saved = activeProfessionals.find(p => p.id === savedBooking.professionalId);
+      if (saved) return saved;
+    }
     if (selectedProfessional) return selectedProfessional;
-    if (!selectedService || !selectedDate || !selectedTime) return eligibleProfessionals[0] || activeProfessionals[0];
-
-    const freePro = findAvailableProfessionalForSlot(
-      selectedDate,
-      selectedTime,
-      selectedService.duration,
-      eligibleProfessionals,
-      existingBookings
-    );
-
+    const slot = slots.find(s => s.time === selectedTime);
+    const freePro = slot ? activeProfessionals.find(p => p.id === slot.professionalIds[0]) : undefined;
     return freePro || eligibleProfessionals[0] || activeProfessionals[0];
   };
 
@@ -260,34 +271,25 @@ export default function BookingModal({
       return;
     }
 
-    const pro = determineProfessional();
-
-    const newBookingData: Omit<Booking, 'id' | 'createdAt'> = {
-      serviceId: selectedService.id,
-      serviceName: selectedService.name,
-      professionalId: pro.id,
-      professionalName: pro.name,
-      date: selectedDate, // YYYY-MM-DD estrito
-      time: selectedTime, // HH:MM estrito
-      clientName: clientName.trim(),
-      clientPhone: clientPhone.trim(),
-      clientEmail: clientEmail.trim() || undefined,
-      notes: clientNotes.trim() || undefined,
-      status: 'pendente',
-      origin: 'site',
-      price: selectedService.priceBase,
-      duration: selectedService.duration
-    };
-
     setIsSubmitting(true);
 
     try {
-      const result = await onAddBooking(newBookingData);
+      const result = await createPublicBooking({
+        serviceId: selectedService.id,
+        date: selectedDate, // YYYY-MM-DD estrito
+        time: selectedTime, // HH:MM estrito
+        clientName: clientName.trim(),
+        clientPhone: clientPhone.trim(),
+        professionalId: selectedProfessional?.id ?? null, // null = primeira disponível (o banco escolhe)
+        clientEmail: clientEmail.trim() || undefined,
+        notes: clientNotes.trim() || undefined
+      });
       setIsSubmitting(false);
 
       if (result.error || !result.booking) {
         setSubmitError(result.error || 'Não foi possível concluir o agendamento. O horário pode ter sido reservado por outro cliente. Por favor, tente novamente.');
-        setSelectedTime(''); // Clear slot so user re-evaluates
+        setSelectedTime(''); // Limpa o horário para a cliente escolher de novo
+        setSlotsReload(n => n + 1); // e busca os horários atualizados
         return;
       }
 
@@ -360,16 +362,16 @@ Gostaria de enviar este comprovante para confirmação.`;
 
   return (
     <>
-      <div 
+      <div
         className="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-3 sm:p-4 md:p-6"
         role="dialog"
         aria-modal="true"
         aria-labelledby="booking-modal-title"
       >
         {/* Overlay backdrop */}
-        <div 
-          className="fixed inset-0 bg-black/80 backdrop-blur-sm transition-opacity" 
-          onClick={() => step !== 5 && !isSubmitting ? onClose() : null} 
+        <div
+          className="fixed inset-0 bg-black/80 backdrop-blur-sm transition-opacity"
+          onClick={() => step !== 5 && !isSubmitting ? onClose() : null}
         />
 
         {/* Modal box */}
@@ -392,9 +394,9 @@ Gostaria de enviar este comprovante para confirmação.`;
               </span>
             </div>
             {step !== 5 && (
-              <button 
+              <button
                 ref={closeButtonRef}
-                onClick={onClose} 
+                onClick={onClose}
                 disabled={isSubmitting}
                 className="w-11 h-11 flex items-center justify-center text-[#7C736D] hover:text-[#29231F] hover:bg-black/5 rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-[#C7A15D]"
                 aria-label="Fechar janela de agendamento"
@@ -426,13 +428,13 @@ Gostaria de enviar este comprovante para confirmação.`;
                   const isCurrent = step === num;
                   const isPassed = step > num;
                   return (
-                    <div 
+                    <div
                       key={num}
                       className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md transition-colors ${
-                        isCurrent 
-                          ? 'text-[#70542D] bg-[#EEDCBF] shadow-sm' 
-                          : isPassed 
-                            ? 'text-[#5B7C65]' 
+                        isCurrent
+                          ? 'text-[#70542D] bg-[#EEDCBF] shadow-sm'
+                          : isPassed
+                            ? 'text-[#5B7C65]'
                             : 'text-[#8C837C]'
                       }`}
                       aria-current={isCurrent ? 'step' : undefined}
@@ -477,7 +479,7 @@ Gostaria de enviar este comprovante para confirmação.`;
           {/* Dynamic Step Content with smooth scrolling */}
           <div className="p-4 sm:p-6 overflow-y-auto grow bg-[#FFFDFB]">
             <AnimatePresence mode="wait">
-              
+
               {/* STEP 1: SELECT SERVICE */}
               {step === 1 && (
                 <motion.div
@@ -493,7 +495,7 @@ Gostaria de enviar este comprovante para confirmação.`;
                     <div>
                       <label htmlFor={searchInputId} className="sr-only">Pesquisar serviço por nome ou categoria</label>
                       <div className="relative w-full">
-                        <input 
+                        <input
                           id={searchInputId}
                           type="search"
                           placeholder="Pesquisar serviço (ex: escova, cilios, unha, massagem)..."
@@ -507,7 +509,7 @@ Gostaria de enviar este comprovante para confirmação.`;
 
                     {/* Category Carousel with visible indicator */}
                     <div className="relative">
-                      <div 
+                      <div
                         className="flex gap-1.5 overflow-x-auto py-1 scrollbar-thin scroll-smooth"
                         role="tablist"
                         aria-label="Filtro de categorias de serviços"
@@ -518,8 +520,8 @@ Gostaria de enviar este comprovante para confirmação.`;
                           aria-selected={selectedCategoryFilter === 'todos'}
                           onClick={() => setSelectedCategoryFilter('todos')}
                           className={`px-3.5 py-2 rounded-lg text-xs font-bold whitespace-nowrap transition-colors min-h-[38px] ${
-                            selectedCategoryFilter === 'todos' 
-                              ? 'bg-[#29231F] text-white shadow-sm' 
+                            selectedCategoryFilter === 'todos'
+                              ? 'bg-[#29231F] text-white shadow-sm'
                               : 'bg-[#F2ECE4] text-[#5C534D] hover:bg-[#E6DFD5]'
                           }`}
                         >
@@ -535,8 +537,8 @@ Gostaria de enviar este comprovante para confirmação.`;
                               aria-selected={isSelected}
                               onClick={() => setSelectedCategoryFilter(cat.id)}
                               className={`px-3 py-2 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors min-h-[38px] flex items-center gap-1.5 ${
-                                isSelected 
-                                  ? 'bg-[#29231F] text-white shadow-sm' 
+                                isSelected
+                                  ? 'bg-[#29231F] text-white shadow-sm'
                                   : 'bg-[#F2ECE4] text-[#5C534D] hover:bg-[#E6DFD5]'
                               }`}
                             >
@@ -554,7 +556,7 @@ Gostaria de enviar este comprovante para confirmação.`;
                         {filteredServices.length} {filteredServices.length === 1 ? 'serviço encontrado' : 'serviços encontrados'}
                       </span>
                       {(searchQuery || selectedCategoryFilter !== 'todos') && (
-                        <button 
+                        <button
                           onClick={() => { setSearchQuery(''); setSelectedCategoryFilter('todos'); }}
                           className="text-[#70542D] hover:underline font-semibold"
                         >
@@ -565,16 +567,16 @@ Gostaria de enviar este comprovante para confirmação.`;
                   </div>
 
                   {/* Services List as Radio Group */}
-                  <div 
-                    role="radiogroup" 
-                    aria-label="Lista de serviços disponíveis" 
+                  <div
+                    role="radiogroup"
+                    aria-label="Lista de serviços disponíveis"
                     className="space-y-2.5 pt-1"
                   >
                     {filteredServices.map(service => {
                       const isSelected = selectedService?.id === service.id;
 
                       return (
-                        <div 
+                        <div
                           key={service.id}
                           role="radio"
                           aria-checked={isSelected}
@@ -602,7 +604,7 @@ Gostaria de enviar este comprovante para confirmação.`;
                               )}
                             </div>
                             <p className="text-[#5C534D] text-xs line-clamp-2">{service.description}</p>
-                            
+
                             <div className="flex gap-2 pt-1 flex-wrap items-center">
                               <span className="text-[10px] text-[#7C736D] bg-[#EDE7DF] border border-[#DDD6CC] px-2 py-0.5 rounded font-semibold flex items-center gap-1">
                                 <Clock size={11} /> {service.duration} min
@@ -670,7 +672,7 @@ Gostaria de enviar este comprovante para confirmação.`;
 
                   <div role="radiogroup" aria-label="Escolha a profissional para o atendimento" className="space-y-3">
                     {/* Option: First Available */}
-                    <div 
+                    <div
                       role="radio"
                       aria-checked={isFirstAvailable}
                       tabIndex={0}
@@ -688,8 +690,8 @@ Gostaria de enviar este comprovante para confirmação.`;
                         }
                       }}
                       className={`p-4 rounded-xl border transition-all duration-200 cursor-pointer flex justify-between items-center ${
-                        isFirstAvailable 
-                          ? 'bg-[#FAF3E8] border-[#C7A15D] ring-2 ring-[#C7A15D]/40 shadow-sm' 
+                        isFirstAvailable
+                          ? 'bg-[#FAF3E8] border-[#C7A15D] ring-2 ring-[#C7A15D]/40 shadow-sm'
                           : 'border-[#E6DFD5] hover:border-[#C7A15D]/50 bg-[#FAF8F5]'
                       }`}
                     >
@@ -709,7 +711,7 @@ Gostaria de enviar este comprovante para confirmação.`;
                     {eligibleProfessionals.map((pro) => {
                       const isSelected = selectedProfessional?.id === pro.id && !isFirstAvailable;
                       return (
-                        <div 
+                        <div
                           key={pro.id}
                           role="radio"
                           aria-checked={isSelected}
@@ -729,7 +731,7 @@ Gostaria de enviar este comprovante para confirmação.`;
                           }}
                           className={`p-4 rounded-xl border transition-all duration-200 cursor-pointer flex justify-between items-center ${
                             isSelected
-                              ? 'bg-[#FAF3E8] border-[#C7A15D] ring-2 ring-[#C7A15D]/40 shadow-sm' 
+                              ? 'bg-[#FAF3E8] border-[#C7A15D] ring-2 ring-[#C7A15D]/40 shadow-sm'
                               : 'border-[#E6DFD5] hover:border-[#C7A15D]/50 bg-[#FAF8F5]'
                           }`}
                         >
@@ -737,8 +739,8 @@ Gostaria de enviar este comprovante para confirmação.`;
                             {/* Avatar or fallback */}
                             <div className="w-12 h-12 rounded-full overflow-hidden bg-[#EADCC8] border border-[#D5C2A7] shrink-0 flex items-center justify-center">
                               {pro.avatarUrl || pro.photoUrl ? (
-                                <img 
-                                  src={pro.avatarUrl || pro.photoUrl} 
+                                <img
+                                  src={pro.avatarUrl || pro.photoUrl}
                                   alt={pro.name}
                                   width={48}
                                   height={48}
@@ -801,7 +803,7 @@ Gostaria de enviar este comprovante para confirmação.`;
                     <span className="text-xs text-[#5C534D] uppercase tracking-wider font-bold block">
                       Selecione uma data disponível:
                     </span>
-                    <div 
+                    <div
                       className="flex gap-2 overflow-x-auto pb-2 scrollbar-thin"
                       role="radiogroup"
                       aria-label="Datas disponíveis para agendamento"
@@ -821,8 +823,8 @@ Gostaria de enviar este comprovante para confirmação.`;
                               setSubmitError(null);
                             }}
                             className={`flex flex-col items-center justify-center p-3 rounded-xl border min-w-[76px] transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-[#C7A15D] ${
-                              isSelected 
-                                ? 'bg-[#29231F] text-white border-[#29231F] shadow-md scale-[1.02]' 
+                              isSelected
+                                ? 'bg-[#29231F] text-white border-[#29231F] shadow-md scale-[1.02]'
                                 : 'bg-[#FAF8F5] hover:bg-[#FAF3E8] text-[#5C534D] hover:text-[#29231F] border-[#E6DFD5]'
                             }`}
                           >
@@ -847,9 +849,21 @@ Gostaria de enviar este comprovante para confirmação.`;
                         </span>
                       </div>
 
-                      {availableTimeSlots.length > 0 ? (
-                        <div 
-                          role="radiogroup" 
+                      {slotsLoading ? (
+                        <div className="text-center py-8 text-[#5C534D] text-xs flex items-center justify-center gap-2" role="status">
+                          <span className="w-4 h-4 border-2 border-[#C7A15D] border-t-transparent rounded-full animate-spin" />
+                          Buscando horários livres...
+                        </div>
+                      ) : slotsError ? (
+                        <div className="text-center py-6 text-red-700 bg-red-50 border border-red-200 rounded-xl text-xs space-y-2">
+                          <p className="font-semibold">{slotsError}</p>
+                          <button type="button" onClick={() => setSlotsReload(n => n + 1)} className="underline font-semibold">
+                            Tentar de novo
+                          </button>
+                        </div>
+                      ) : availableTimeSlots.length > 0 ? (
+                        <div
+                          role="radiogroup"
                           aria-label="Horários disponíveis para o dia selecionado"
                           className="grid grid-cols-4 sm:grid-cols-5 gap-2.5"
                         >
@@ -867,8 +881,8 @@ Gostaria de enviar este comprovante para confirmação.`;
                                   setSubmitError(null);
                                 }}
                                 className={`h-11 rounded-lg border text-sm font-semibold transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-[#C7A15D] ${
-                                  isSelected 
-                                    ? 'bg-[#29231F] text-white border-[#29231F] shadow-md scale-[1.02]' 
+                                  isSelected
+                                    ? 'bg-[#29231F] text-white border-[#29231F] shadow-md scale-[1.02]'
                                     : 'bg-[#FAF8F5] hover:bg-[#FAF3E8] text-[#29231F] border-[#E6DFD5]'
                                 }`}
                               >
@@ -936,8 +950,8 @@ Gostaria de enviar este comprovante para confirmação.`;
                       <div>
                         <span className="text-[10px] uppercase font-bold text-[#7C736D] block">Profissional:</span>
                         <span className="font-bold text-sm">
-                          {isFirstAvailable 
-                            ? `${determineProfessional().name} (Primeira disponível)` 
+                          {isFirstAvailable
+                            ? `${determineProfessional().name} (Primeira disponível)`
                             : selectedProfessional?.name}
                         </span>
                         <span className="text-[11px] text-[#7C736D] block">{determineProfessional().role}</span>
@@ -966,9 +980,9 @@ Gostaria de enviar este comprovante para confirmação.`;
                         Seu Nome Completo *
                       </label>
                       <div className="relative">
-                        <input 
+                        <input
                           id={nameInputId}
-                          type="text" 
+                          type="text"
                           required
                           autoComplete="name"
                           value={clientName}
@@ -996,9 +1010,9 @@ Gostaria de enviar este comprovante para confirmação.`;
                         WhatsApp para Confirmação *
                       </label>
                       <div className="relative">
-                        <input 
+                        <input
                           id={phoneInputId}
-                          type="tel" 
+                          type="tel"
                           required
                           autoComplete="tel"
                           value={clientPhone}
@@ -1030,9 +1044,9 @@ Gostaria de enviar este comprovante para confirmação.`;
                         E-mail (Opcional)
                       </label>
                       <div className="relative">
-                        <input 
+                        <input
                           id={emailInputId}
-                          type="email" 
+                          type="email"
                           autoComplete="email"
                           value={clientEmail}
                           onChange={(e) => setClientEmail(e.target.value)}
@@ -1049,7 +1063,7 @@ Gostaria de enviar este comprovante para confirmação.`;
                         Observações do Atendimento (Opcional)
                       </label>
                       <div className="relative">
-                        <textarea 
+                        <textarea
                           id={notesInputId}
                           value={clientNotes}
                           onChange={(e) => setClientNotes(e.target.value)}
@@ -1076,10 +1090,10 @@ Gostaria de enviar este comprovante para confirmação.`;
                       </p>
                     </div>
 
-                    <button 
+                    <button
                       type="submit"
-                      className="hidden" 
-                      id="submit-booking-form-btn" 
+                      className="hidden"
+                      id="submit-booking-form-btn"
                     />
                   </form>
                 </motion.div>
@@ -1103,8 +1117,8 @@ Gostaria de enviar este comprovante para confirmação.`;
                       {savedBooking?.status === 'confirmado' ? 'Agendamento Confirmado!' : 'Solicitação Recebida!'}
                     </h3>
                     <p className="text-xs sm:text-sm text-[#70542D] font-semibold max-w-md mx-auto">
-                      {savedBooking?.status === 'confirmado' 
-                        ? 'Seu horário foi confirmado com sucesso na agenda Cuidare.' 
+                      {savedBooking?.status === 'confirmado'
+                        ? 'Seu horário foi confirmado com sucesso na agenda Cuidare.'
                         : 'Sua solicitação de agendamento foi registrada com sucesso no sistema Cuidare.'}
                     </p>
                   </div>

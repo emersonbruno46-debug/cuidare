@@ -23,3 +23,8 @@ dist-ssr
 *.sln
 *.sw?
 *.exe
+
+# Variáveis de ambiente (endereço e chaves do Supabase)
+.env
+.env.*
+!.env.example

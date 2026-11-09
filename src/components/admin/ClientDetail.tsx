@@ -19,17 +19,19 @@ interface ClientDetailProps {
   currentUser: AuthUser;
 }
 
-export default function ClientDetail({ client, onClose, currentUser: _currentUser }: ClientDetailProps) {
+export default function ClientDetail({ client, onClose, currentUser }: ClientDetailProps) {
   const [showManualForm, setShowManualForm] = useState(false);
   const [manualService, setManualService] = useState('');
-  const [manualPro, setManualPro] = useState('');
+  const [manualPro, setManualPro] = useState(currentUser.role === 'admin' ? '' : currentUser.professionalId ?? '');
+  const [manualError, setManualError] = useState('');
   const [manualDate, setManualDate] = useState('');
   const [manualPrice, setManualPrice] = useState('');
   const [manualNotes, setManualNotes] = useState('');
   const [saving, setSaving] = useState(false);
-  const [refreshKey, setRefreshKey] = useState(0);
-
-  const professionals = getProfessionals();
+  // A colaboradora só lança histórico em seu próprio nome
+  const professionals = getProfessionals().filter(
+    p => currentUser.role === 'admin' || p.id === currentUser.professionalId
+  );
   const history = getClientHistory(client.id);
   const upcomingBookings = getBookings().filter(
     b => b.clientPhone.replace(/\D/g, '') === client.phone.replace(/\D/g, '') &&
@@ -54,9 +56,10 @@ export default function ClientDetail({ client, onClose, currentUser: _currentUse
   const handleAddManual = async () => {
     if (!manualService || !manualPro || !manualDate) return;
     setSaving(true);
+    setManualError('');
     const pro = professionals.find(p => p.id === manualPro);
     const svc = services.find(s => s.id === manualService);
-    addManualHistoryEntry(client.id, {
+    const result = await addManualHistoryEntry(client.id, {
       serviceName: svc?.name ?? manualService,
       professionalId: manualPro,
       professionalName: pro?.name ?? manualPro,
@@ -64,10 +67,13 @@ export default function ClientDetail({ client, onClose, currentUser: _currentUse
       price: parseFloat(manualPrice) || 0,
       notes: manualNotes || undefined,
     });
-    setShowManualForm(false);
-    setManualService(''); setManualPro(''); setManualDate(''); setManualPrice(''); setManualNotes('');
     setSaving(false);
-    setRefreshKey(k => k + 1);
+    if (result.error) {
+      setManualError(result.error);
+      return;
+    }
+    setShowManualForm(false);
+    setManualService(''); setManualDate(''); setManualPrice(''); setManualNotes('');
   };
 
   const statusColors: Record<string, string> = {
@@ -221,6 +227,7 @@ export default function ClientDetail({ client, onClose, currentUser: _currentUse
                       <input type="number" value={manualPrice} onChange={e => setManualPrice(e.target.value)} placeholder="Valor R$" className="h-9 px-3 border border-[rgba(37,27,23,0.12)] rounded-lg text-xs focus:outline-none focus:border-[#C7A15D]" />
                       <input type="text" value={manualNotes} onChange={e => setManualNotes(e.target.value)} placeholder="Observação (opcional)" className="h-9 px-3 border border-[rgba(37,27,23,0.12)] rounded-lg text-xs focus:outline-none focus:border-[#C7A15D]" />
                     </div>
+                    {manualError && <p className="text-xs text-red-600">{manualError}</p>}
                     <div className="flex gap-2">
                       <button onClick={() => setShowManualForm(false)} className="flex-1 h-8 border border-gray-200 rounded-lg text-xs font-medium hover:bg-gray-50">Cancelar</button>
                       <button onClick={handleAddManual} disabled={saving || !manualService || !manualPro || !manualDate} className="flex-1 h-8 bg-[#251B17] text-white rounded-lg text-xs font-semibold disabled:opacity-50 hover:bg-[#1a120e] transition-colors">
@@ -237,7 +244,7 @@ export default function ClientDetail({ client, onClose, currentUser: _currentUse
                   <p>Nenhum histórico registrado ainda.</p>
                 </div>
               ) : (
-                <div className="space-y-3" key={refreshKey}>
+                <div className="space-y-3">
                   {history.map(entry => (
                     <div key={entry.id} className="p-4 bg-white border border-[rgba(37,27,23,0.09)] rounded-xl shadow-sm">
                       <div className="flex items-start justify-between gap-2 mb-2">

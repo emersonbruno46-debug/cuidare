@@ -36,8 +36,8 @@ Crie o arquivo `.env` na raiz do projeto baseado nas variáveis abaixo:
 # URL do projeto no Supabase
 VITE_SUPABASE_URL=https://seu-projeto.supabase.co
 
-# Chave Anônima Pública (Anon Key)
-VITE_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+# Chave pública (publishable key)
+VITE_SUPABASE_PUBLISHABLE_KEY=sb_publishable_...
 ```
 
 > **Atenção de Segurança:** Nunca inclua a `SUPABASE_SERVICE_ROLE_KEY` no código do frontend. A chave service role deve ficar restrita a scripts de servidor ou Supabase Edge Functions.
@@ -52,6 +52,8 @@ As migrações ficam em `supabase/migrations/` e devem ser aplicadas nesta ordem
 2. `20261105000002_regras_agendamento.sql`: funções que o site chama (`get_available_slots` e `create_public_booking`), além das automações de comissão, histórico, mensagens de WhatsApp e registro de alterações.
 3. `20261105000003_seguranca_rls.sql`: permissões de acesso para visitante, colaboradora e administradora.
 4. `20261105000004_dados_iniciais.sql`: categorias, equipe, serviços e horário do salão. Este arquivo é **gerado** a partir de `src/data` com `npm run db:seed`; não edite à mão.
+5. `20261109000005_indices_extras.sql`: índices sugeridos pela verificação de desempenho do Supabase.
+6. `20261109000006_nome_regra_cancelamento.sql`: nome claro para a regra "cancelamento exige motivo".
 
 > As migrações de 25/09/2026 foram substituídas por estas. Elas nunca chegaram a ser aplicadas e tinham erros: as permissões não funcionavam e faltavam as categorias `noivas` e `cursos`.
 
@@ -78,23 +80,21 @@ Abra o **SQL Editor** e execute o conteúdo dos 4 arquivos, um de cada vez, na o
 
 O papel de cada pessoa fica na tabela `staff_members`, e não no token de login. Assim, desativar alguém bloqueia o acesso na hora.
 
-1. No Supabase Dashboard, acesse **Authentication > Users > Add User** e crie o usuário com e-mail e senha.
-2. No **SQL Editor**, vincule o usuário ao papel:
+### Primeira administradora (feito uma única vez)
+1. No Supabase Dashboard, acesse **Authentication > Users > Add user > Create new user**, informe e-mail e senha e marque **Auto Confirm User**.
+2. No **SQL Editor**, ligue o usuário ao papel de administradora:
 
 ```sql
--- Administradora
 insert into public.staff_members (user_id, name, email, role)
-select id, 'Lane Viana', email, 'admin' from auth.users where email = 'lane@cuidare.com.br';
-
--- Colaboradora (professional_id = id da profissional: evelyn, railma, maisa, fabiane, lara)
-insert into public.staff_members (user_id, name, email, role, professional_id)
-select id, 'Evelyn', email, 'collaborator', 'evelyn' from auth.users where email = 'evelyn@cuidare.com.br';
+select id, 'Lane Viana', email, 'admin' from auth.users where email = 'EMAIL-DA-LANE';
 ```
 
-Para desativar alguém:
-```sql
-update public.staff_members set active = false where email = 'evelyn@cuidare.com.br';
-```
+### Demais pessoas (pelo próprio painel)
+Com a administradora logada, abra **Equipe > Nova conta de acesso**, escolha a profissional, o e-mail e a senha inicial. A conta é criada pela Edge Function `criar-acesso-equipe` (código em `supabase/functions/`), que roda no servidor com a chave secreta.
+
+- **Esqueceu a senha:** em **Equipe**, use o botão **Nova senha** da pessoa.
+- **Trocar a própria senha:** menu lateral, **Trocar minha senha**.
+- **Desativar:** em **Equipe**, clique em **Ativo** para virar **Inativo**.
 
 ### O que cada papel pode fazer
 | | Visitante do site | Colaboradora | Administradora |
@@ -119,7 +119,7 @@ update public.staff_members set active = false where email = 'evelyn@cuidare.com
    ```bash
    vercel --prod
    ```
-3. No painel da Vercel em **Settings > Environment Variables**, adicione `VITE_SUPABASE_URL` e `VITE_SUPABASE_ANON_KEY`.
+3. No painel da Vercel em **Settings > Environment Variables**, adicione `VITE_SUPABASE_URL` e `VITE_SUPABASE_PUBLISHABLE_KEY`.
 
 ---
 

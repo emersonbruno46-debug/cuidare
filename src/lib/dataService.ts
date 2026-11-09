@@ -1,421 +1,547 @@
 // ─────────────────────────────────────────────
-// CUIDARE — Data Service (localStorage)
-// Todas as operações de CRUD centralizadas aqui.
-// Quando migrar para Supabase: substitua este arquivo pelas chamadas do SDK.
+// CUIDARE — Dados do salão (Supabase)
+//
+// Como funciona:
+//  • Os dados ficam no banco do Supabase. Este arquivo busca o que a pessoa
+//    logada pode ver e guarda uma cópia na memória do navegador.
+//  • As telas leem essa cópia na hora (getBookings, getClients...).
+//  • Toda alteração vai para o banco primeiro; se o banco aceitar, a cópia é atualizada.
+//  • O banco é quem decide regras importantes: conflito de horário, comissão,
+//    histórico da cliente, mensagens de WhatsApp e registro de alterações.
 // ─────────────────────────────────────────────
 
+import { useSyncExternalStore } from 'react';
 import type {
-  Booking, Client, ClientHistoryEntry, AvailabilityRule,
-  ScheduleBlock, AuditLog, Professional, NotificationJob
+  Booking, BookingStatus, BookingOrigin, Client, ClientHistoryEntry, AvailabilityRule,
+  ScheduleBlock, AuditLog, Professional, NotificationJob, BusinessSettings,
+  RescheduleEntry, ServiceCategory, UserRole
 } from '../types';
-import { professionals as seedProfessionals } from '../data/professionalsData';
+import { professionals as staticProfessionals } from '../data/professionalsData';
 import { getCurrentUser } from './auth';
+import { getSupabase, isSupabaseConfigured, friendlyDbError } from './supabase';
 import { timeToMinutes, isProfessionalAvailableForWindow } from './availability';
-import { getBusinessSettings, normalizeBrazilianPhone } from './businessSettings';
+import {
+  getBusinessSettings, setBusinessSettingsCache, normalizeBrazilianPhone, DEFAULT_SETTINGS
+} from './businessSettings';
 
-// ── Storage keys
-const KEYS = {
-  bookings: 'cuidare_bookings_v2',
-  clients: 'cuidare_clients_v2',
-  history: 'cuidare_history_v2',
-  availability: 'cuidare_availability_v2',
-  blocks: 'cuidare_blocks_v2',
-  professionals: 'cuidare_professionals_v2',
-  auditLogs: 'cuidare_audit_v2',
-  notifications: 'cuidare_notifications_v2',
-  demoSeeded: 'cuidare_demo_seeded_v2'
-};
+// ═════════════════════════════════════════════
+// MEMÓRIA (cópia local do que veio do banco)
+// ═════════════════════════════════════════════
 
-// ── Generic helpers
-function getList<T>(key: string): T[] {
+export interface StaffMember {
+  userId: string;
+  name: string;
+  email: string;
+  role: UserRole;
+  professionalId?: string;
+  active: boolean;
+  createdAt: string;
+}
+
+interface Cache {
+  professionals: Professional[];
+  bookings: Booking[];
+  clients: Client[];
+  history: ClientHistoryEntry[];
+  rules: AvailabilityRule[];
+  blocks: ScheduleBlock[];
+  staff: StaffMember[];
+  auditLogs: AuditLog[];
+}
+
+const emptyCache = (): Cache => ({
+  professionals: [], bookings: [], clients: [], history: [], rules: [], blocks: [], staff: [], auditLogs: []
+});
+
+let cache: Cache = emptyCache();
+let version = 0;
+const listeners = new Set<() => void>();
+
+function changed() {
+  version++;
+  listeners.forEach(l => l());
+}
+
+/** Faz a tela redesenhar quando os dados chegam ou mudam. */
+export function useDataVersion(): number {
+  return useSyncExternalStore(
+    l => { listeners.add(l); return () => listeners.delete(l); },
+    () => version,
+    () => version
+  );
+}
+
+// ═════════════════════════════════════════════
+// CONVERSÃO banco ⇄ site
+// ═════════════════════════════════════════════
+
+type Row = Record<string, unknown>;
+const hhmm = (t: unknown): string => (typeof t === 'string' ? t.slice(0, 5) : '');
+const optHhmm = (t: unknown): string | undefined => (typeof t === 'string' ? t.slice(0, 5) : undefined);
+const num = (v: unknown): number => (v === null || v === undefined ? 0 : Number(v));
+const optNum = (v: unknown): number | undefined => (v === null || v === undefined ? undefined : Number(v));
+const optStr = (v: unknown): string | undefined => (v === null || v === undefined || v === '' ? undefined : String(v));
+
+function toProfessional(r: Row): Professional {
+  return {
+    id: String(r.id),
+    name: String(r.name),
+    role: String(r.role ?? ''),
+    categories: (r.categories as ServiceCategory[]) ?? [],
+    photoUrl: optStr(r.photo_url),
+    avatarUrl: optStr(r.avatar_url),
+    bio: String(r.bio ?? ''),
+    specialties: (r.specialties as string[]) ?? [],
+    specialtyHighlight: optStr(r.specialty_highlight),
+    specialtyBadge: optStr(r.specialty_badge),
+    providerType: (r.provider_type as Professional['providerType']) ?? 'internal',
+    whatsapp: optStr(r.whatsapp),
+    instagram: optStr(r.instagram),
+    commissionRate: num(r.commission_rate),
+    active: r.active !== false
+  };
+}
+
+function toBooking(r: Row): Booking {
+  return {
+    id: String(r.id),
+    serviceId: String(r.service_id),
+    serviceName: String(r.service_name),
+    professionalId: String(r.professional_id),
+    professionalName: String(r.professional_name),
+    date: String(r.date),
+    time: hhmm(r.start_time),
+    endTime: hhmm(r.end_time),
+    duration: num(r.duration),
+    clientId: optStr(r.client_id),
+    clientName: String(r.client_name),
+    clientPhone: String(r.client_phone),
+    clientEmail: optStr(r.client_email),
+    notes: optStr(r.notes),
+    status: r.status as BookingStatus,
+    price: num(r.price),
+    commissionRate: optNum(r.commission_rate),
+    commissionAmount: optNum(r.commission_amount),
+    paymentStatus: r.payment_status as Booking['paymentStatus'],
+    paymentMethod: optStr(r.payment_method),
+    origin: r.origin as BookingOrigin,
+    createdBy: optStr(r.created_by),
+    createdByName: optStr(r.created_by_name),
+    updatedBy: optStr(r.updated_by),
+    updatedByName: optStr(r.updated_by_name),
+    createdAt: String(r.created_at),
+    updatedAt: optStr(r.updated_at),
+    rescheduleHistory: (r.reschedule_history as RescheduleEntry[]) ?? [],
+    cancelReason: optStr(r.cancel_reason)
+  };
+}
+
+function toClient(r: Row): Client {
+  return {
+    id: String(r.id),
+    phone: String(r.phone),
+    name: String(r.name),
+    email: optStr(r.email),
+    birthDate: optStr(r.birth_date),
+    notes: optStr(r.notes),
+    firstVisit: optStr(r.first_visit),
+    lastVisit: optStr(r.last_visit),
+    totalVisits: num(r.total_visits),
+    totalSpent: num(r.total_spent),
+    createdAt: String(r.created_at),
+    updatedAt: optStr(r.updated_at)
+  };
+}
+
+function toHistory(r: Row): ClientHistoryEntry {
+  return {
+    id: String(r.id),
+    clientId: String(r.client_id),
+    bookingId: optStr(r.booking_id),
+    serviceName: String(r.service_name),
+    professionalId: String(r.professional_id ?? ''),
+    professionalName: String(r.professional_name),
+    date: String(r.date),
+    price: num(r.price),
+    commissionRate: optNum(r.commission_rate),
+    commissionAmount: optNum(r.commission_amount),
+    status: r.status as BookingStatus,
+    notes: optStr(r.notes),
+    origin: r.origin as BookingOrigin,
+    addedManually: r.added_manually === true,
+    createdBy: optStr(r.created_by),
+    createdByName: optStr(r.created_by_name),
+    createdAt: String(r.created_at)
+  };
+}
+
+function toRule(r: Row): AvailabilityRule {
+  return {
+    id: String(r.id),
+    professionalId: String(r.professional_id),
+    dayOfWeek: num(r.day_of_week) as AvailabilityRule['dayOfWeek'],
+    startTime: hhmm(r.start_time),
+    endTime: hhmm(r.end_time),
+    breakStart: optHhmm(r.break_start),
+    breakEnd: optHhmm(r.break_end),
+    slotDuration: num(r.slot_duration) || 30,
+    active: r.active !== false
+  };
+}
+
+function toBlock(r: Row): ScheduleBlock {
+  return {
+    id: String(r.id),
+    professionalId: String(r.professional_id),
+    date: optStr(r.date),
+    startTime: optHhmm(r.start_time),
+    endTime: optHhmm(r.end_time),
+    allDay: r.all_day === true,
+    reason: optStr(r.reason),
+    type: r.type as ScheduleBlock['type'],
+    createdBy: optStr(r.created_by),
+    createdAt: String(r.created_at)
+  };
+}
+
+function toStaff(r: Row): StaffMember {
+  return {
+    userId: String(r.user_id),
+    name: String(r.name),
+    email: String(r.email),
+    role: r.role as UserRole,
+    professionalId: optStr(r.professional_id),
+    active: r.active !== false,
+    createdAt: String(r.created_at)
+  };
+}
+
+function toAudit(r: Row): AuditLog {
+  return {
+    id: String(r.id),
+    userId: String(r.user_id ?? 'public'),
+    userName: String(r.user_name ?? 'Site (público)'),
+    userRole: (r.user_role as UserRole) ?? 'collaborator',
+    action: String(r.action),
+    entityType: String(r.entity_type),
+    entityId: String(r.entity_id ?? ''),
+    previousValues: (r.previous_values as Record<string, unknown>) ?? undefined,
+    newValues: (r.new_values as Record<string, unknown>) ?? undefined,
+    createdAt: String(r.created_at)
+  };
+}
+
+function toSettings(s: Row | null, hours: Row[]): BusinessSettings {
+  const base = { ...DEFAULT_SETTINGS };
+  const openingHours = hours.length === 7
+    ? [...hours]
+        .sort((a, b) => num(a.day_of_week) - num(b.day_of_week))
+        .map(h => ({
+          dayOfWeek: num(h.day_of_week),
+          closed: h.closed === true,
+          open: hhmm(h.open_time),
+          close: hhmm(h.close_time),
+          breakStart: optHhmm(h.break_start),
+          breakEnd: optHhmm(h.break_end)
+        }))
+    : base.openingHours;
+  if (!s) return { ...base, openingHours };
+  return {
+    id: String(s.id),
+    salonName: String(s.salon_name),
+    address: String(s.address),
+    city: String(s.city),
+    state: String(s.state),
+    instagramUrl: optStr(s.instagram_url) ?? '',
+    businessWhatsapp: optStr(s.business_whatsapp),
+    businessWhatsappMessage: optStr(s.business_whatsapp_message),
+    openingHours,
+    commissionDefaultRate: num(s.commission_default_rate),
+    minLeadTimeMinutes: num(s.min_lead_time_minutes),
+    maxAdvanceDays: num(s.max_advance_days),
+    updatedAt: String(s.updated_at)
+  };
+}
+
+/** Busca todas as linhas, de 1000 em 1000 (limite do Supabase por pedido). */
+async function fetchAll(table: string, configure?: (q: any) => any): Promise<Row[]> { // eslint-disable-line @typescript-eslint/no-explicit-any
+  const out: Row[] = [];
+  const page = 1000;
+  for (let from = 0; ; from += page) {
+    let q = getSupabase().from(table).select('*');
+    if (configure) q = configure(q);
+    const { data, error } = await q.range(from, from + page - 1);
+    if (error) throw error;
+    out.push(...(data as Row[]));
+    if (!data || data.length < page) break;
+  }
+  return out;
+}
+
+// ═════════════════════════════════════════════
+// CARREGAMENTO
+// ═════════════════════════════════════════════
+
+/** Limpa dados de versões antigas do site que ficavam guardados no navegador. */
+export function clearLegacyLocalData(): void {
   try {
-    const raw = localStorage.getItem(key);
-    return raw ? JSON.parse(raw) : [];
-  } catch { return []; }
-}
-function setList<T>(key: string, list: T[]): void {
-  localStorage.setItem(key, JSON.stringify(list));
-}
-function genId(): string {
-  return Math.random().toString(36).substr(2, 12) + Date.now().toString(36);
-}
-
-// ── Audit log
-function audit(action: string, entityType: string, entityId: string, prev?: unknown, next?: unknown): void {
-  const user = getCurrentUser();
-  const log: AuditLog = {
-    id: genId(),
-    userId: user?.id ?? 'public',
-    userName: user?.name ?? 'Público',
-    userRole: user?.role ?? 'collaborator',
-    action,
-    entityType,
-    entityId,
-    previousValues: prev as Record<string, unknown> | undefined,
-    newValues: next as Record<string, unknown> | undefined,
-    createdAt: new Date().toISOString()
-  };
-  const logs = getList<AuditLog>(KEYS.auditLogs);
-  logs.unshift(log);
-  setList(KEYS.auditLogs, logs.slice(0, 500));
-}
-
-// ─────────────────────────────────────
-// NOTIFICATIONS QUEUE (STRUCTURE)
-// ─────────────────────────────────────
-
-export function getNotificationQueue(): NotificationJob[] {
-  return getList<NotificationJob>(KEYS.notifications);
-}
-
-export function enqueueNotificationJob(
-  booking: Booking,
-  type: NotificationJob['type'],
-  customMessage?: string
-): NotificationJob {
-  const phone = normalizeBrazilianPhone(booking.clientPhone);
-  const msg = customMessage || `Olá ${booking.clientName}, seu agendamento de ${booking.serviceName} no Cuidare para ${booking.date} às ${booking.time}h está ${booking.status === 'confirmado' ? 'confirmado' : 'registrado'}.`;
-
-  const job: NotificationJob = {
-    id: 'job_' + genId(),
-    bookingId: booking.id,
-    recipientPhone: phone,
-    recipientName: booking.clientName,
-    message: msg,
-    type,
-    scheduledFor: new Date().toISOString(),
-    status: 'pending',
-    attempts: 0,
-    createdAt: new Date().toISOString()
-  };
-
-  const queue = getNotificationQueue();
-  queue.unshift(job);
-  setList(KEYS.notifications, queue.slice(0, 300));
-  return job;
-}
-
-export function cancelNotificationJobsForBooking(bookingId: string): void {
-  const queue = getNotificationQueue().map(job => {
-    if (job.bookingId === bookingId && job.status === 'pending') {
-      return { ...job, status: 'cancelled' as const };
+    const keys: string[] = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (k && k.startsWith('cuidare_')) keys.push(k);
     }
-    return job;
-  });
-  setList(KEYS.notifications, queue);
+    keys.forEach(k => localStorage.removeItem(k));
+  } catch { /* navegador sem acesso ao armazenamento */ }
 }
 
-// ─────────────────────────────────────
-// PROFESSIONALS
-// ─────────────────────────────────────
+let publicLoaded = false;
+
+/** Dados que qualquer visitante pode ver: equipe e horário do salão. */
+export async function loadPublicData(): Promise<void> {
+  if (!isSupabaseConfigured) return;
+  const supabase = getSupabase();
+  const [pros, settings, hours] = await Promise.all([
+    supabase.from('professionals').select('*').order('sort_order'),
+    supabase.from('business_settings').select('*').eq('id', 1).maybeSingle(),
+    supabase.from('business_hours').select('*')
+  ]);
+  if (!pros.error && pros.data) cache.professionals = (pros.data as Row[]).map(toProfessional);
+  if (!settings.error && !hours.error) {
+    setBusinessSettingsCache(toSettings((settings.data as Row) ?? null, (hours.data as Row[]) ?? []));
+  }
+  publicLoaded = true;
+  changed();
+}
+
+let staffLoading: Promise<void> | null = null;
+
+/**
+ * Dados do painel. O banco só devolve o que a pessoa logada pode ver
+ * (a colaboradora recebe só a própria agenda e as clientes que atendeu).
+ */
+export function loadStaffData(): Promise<void> {
+  if (staffLoading) return staffLoading;
+  staffLoading = (async () => {
+    try {
+      const user = getCurrentUser();
+      if (!user) return;
+      if (!publicLoaded) await loadPublicData();
+
+      // Agenda: do último ano e meio para a frente (suficiente para relatórios e histórico recente)
+      const since = new Date();
+      since.setDate(since.getDate() - 550);
+      const sinceStr = since.toISOString().slice(0, 10);
+
+      const isAdmin = user.role === 'admin';
+      const [pros, bookings, clients, history, rules, blocks, staff, audit] = await Promise.all([
+        fetchAll('professionals', q => q.order('sort_order')),
+        fetchAll('bookings', q => q.gte('date', sinceStr).order('date', { ascending: false }).order('start_time', { ascending: false })),
+        fetchAll('clients_overview', q => q.order('name')),
+        fetchAll('client_history', q => q.order('date', { ascending: false })),
+        fetchAll('availability_rules'),
+        fetchAll('schedule_blocks'),
+        isAdmin ? fetchAll('staff_members', q => q.order('name')) : Promise.resolve([]),
+        isAdmin
+          ? getSupabase().from('audit_logs').select('*').order('created_at', { ascending: false }).limit(200)
+              .then(r => { if (r.error) throw r.error; return r.data as Row[]; })
+          : Promise.resolve([])
+      ]);
+
+      cache = {
+        professionals: pros.map(toProfessional),
+        bookings: bookings.map(toBooking),
+        clients: clients.map(toClient),
+        history: history.map(toHistory),
+        rules: rules.map(toRule),
+        blocks: blocks.map(toBlock),
+        staff: staff.map(toStaff),
+        auditLogs: audit.map(toAudit)
+      };
+      changed();
+    } finally {
+      staffLoading = null;
+    }
+  })();
+  return staffLoading;
+}
+
+/** Ao sair do painel: esquece os dados pessoais que estavam na memória. */
+export function clearStaffData(): void {
+  const professionals = cache.professionals;
+  cache = { ...emptyCache(), professionals };
+  changed();
+}
+
+// ═════════════════════════════════════════════
+// PROFISSIONAIS
+// ═════════════════════════════════════════════
 
 export function getProfessionals(): Professional[] {
-  const stored = getList<Professional>(KEYS.professionals);
-  const validSeedIds = new Set(seedProfessionals.map(p => p.id));
-
-  if (stored.length === 0) {
-    const seeded = seedProfessionals.map(p => ({
-      ...p,
-      whatsapp: normalizeBrazilianPhone(p.whatsapp),
-      active: p.active !== false,
-      commissionRate: p.commissionRate ?? 0.5
-    }));
-    setList(KEYS.professionals, seeded);
-    return seeded;
-  }
-
-  // Remove obsolete professionals that are no longer in seedProfessionals
-  let updated = false;
-  const merged = stored.filter(p => validSeedIds.has(p.id));
-  if (merged.length !== stored.length) {
-    updated = true;
-  }
-
-  // Ensure all active professionals from seed are present and static metadata is up-to-date
-  seedProfessionals.forEach(seedPro => {
-    const existingIdx = merged.findIndex(p => p.id === seedPro.id);
-    if (existingIdx === -1) {
-      merged.push({
-        ...seedPro,
-        whatsapp: normalizeBrazilianPhone(seedPro.whatsapp),
-        active: seedPro.active !== false,
-        commissionRate: seedPro.commissionRate ?? 0.5
-      });
-      updated = true;
-    } else {
-      const current = merged[existingIdx];
-      if (
-        current.photoUrl !== seedPro.photoUrl ||
-        current.name !== seedPro.name ||
-        current.role !== seedPro.role ||
-        current.bio !== seedPro.bio ||
-        JSON.stringify(current.categories) !== JSON.stringify(seedPro.categories) ||
-        JSON.stringify(current.specialties) !== JSON.stringify(seedPro.specialties)
-      ) {
-        merged[existingIdx] = {
-          ...current,
-          name: seedPro.name,
-          role: seedPro.role,
-          bio: seedPro.bio,
-          photoUrl: seedPro.photoUrl,
-          categories: seedPro.categories,
-          specialties: seedPro.specialties,
-          specialtyHighlight: seedPro.specialtyHighlight,
-          specialtyBadge: seedPro.specialtyBadge
-        };
-        updated = true;
-      }
-    }
-  });
-
-  if (updated) {
-    setList(KEYS.professionals, merged);
-  }
-
-  return merged;
+  return cache.professionals.length > 0 ? cache.professionals : staticProfessionals;
 }
 
-export function updateProfessional(id: string, updates: Partial<Professional>): Professional | null {
-  const list = getProfessionals();
-  const idx = list.findIndex(p => p.id === id);
-  if (idx === -1) return null;
-  const prev = { ...list[idx] };
+export async function updateProfessional(id: string, updates: Partial<Professional>): Promise<{ error?: string }> {
+  const patch: Row = {};
+  if (updates.whatsapp !== undefined) patch.whatsapp = updates.whatsapp ? normalizeBrazilianPhone(updates.whatsapp) : null;
+  if (updates.photoUrl !== undefined) patch.photo_url = updates.photoUrl || null;
+  if (updates.bio !== undefined) patch.bio = updates.bio;
+  if (updates.commissionRate !== undefined) patch.commission_rate = Math.min(1, Math.max(0, updates.commissionRate));
+  if (updates.active !== undefined) patch.active = updates.active;
 
-  if (updates.whatsapp) {
-    updates.whatsapp = normalizeBrazilianPhone(updates.whatsapp);
-  }
-
-  list[idx] = { ...list[idx], ...updates };
-  setList(KEYS.professionals, list);
-  audit('update_professional', 'professional', id, prev, list[idx]);
-  return list[idx];
+  const { data, error } = await getSupabase().from('professionals').update(patch).eq('id', id).select().single();
+  if (error) return { error: friendlyDbError(error) };
+  cache.professionals = cache.professionals.map(p => (p.id === id ? toProfessional(data as Row) : p));
+  changed();
+  return {};
 }
 
-// ─────────────────────────────────────
-// BOOKINGS
-// ─────────────────────────────────────
+// ═════════════════════════════════════════════
+// AGENDAMENTOS
+// ═════════════════════════════════════════════
 
 export function getBookings(): Booking[] {
-  return getList<Booking>(KEYS.bookings);
+  return cache.bookings;
 }
 
 export function getBookingById(id: string): Booking | undefined {
-  return getBookings().find(b => b.id === id);
+  return cache.bookings.find(b => b.id === id);
 }
 
-/** Validates no time overlap for the same professional (excludes cancelled) */
+/** Confere sobreposição com os agendamentos já carregados (o banco confere de novo ao gravar). */
 export function validateConflict(
-  professionalId: string,
-  date: string,
-  startTime: string,
-  duration: number,
-  excludeId?: string
+  professionalId: string, date: string, startTime: string, duration: number, excludeId?: string
 ): { conflict: boolean; conflictWith?: Booking } {
-  const bookings = getBookings().filter(
-    b => b.professionalId === professionalId &&
-      b.date === date &&
-      b.status !== 'cancelado' &&
-      b.id !== excludeId
-  );
-
   const newStart = timeToMinutes(startTime);
   const newEnd = newStart + duration;
-
-  for (const b of bookings) {
-    const bStart = timeToMinutes(b.time);
-    const bEnd = bStart + b.duration;
-    if (newStart < bEnd && newEnd > bStart) {
-      return { conflict: true, conflictWith: b };
-    }
-  }
-  return { conflict: false };
+  const conflictWith = cache.bookings.find(b =>
+    b.professionalId === professionalId && b.date === date && b.status !== 'cancelado' && b.id !== excludeId &&
+    newStart < timeToMinutes(b.time) + b.duration && newEnd > timeToMinutes(b.time)
+  );
+  return { conflict: Boolean(conflictWith), conflictWith };
 }
 
-export function createBooking(data: Omit<Booking, 'id' | 'createdAt'>): { booking: Booking | null; error?: string } {
-  // Validate inputs
+function upsertBookingInCache(row: Row) {
+  const b = toBooking(row);
+  const idx = cache.bookings.findIndex(x => x.id === b.id);
+  if (idx >= 0) cache.bookings[idx] = b;
+  else cache.bookings.unshift(b);
+  cache.bookings = [...cache.bookings];
+  return b;
+}
+
+/** Depois de concluir ou cancelar, o banco atualiza clientes e histórico sozinho; buscamos de novo. */
+async function refreshClientsAndHistory() {
+  try {
+    const [clients, history] = await Promise.all([
+      fetchAll('clients_overview', q => q.order('name')),
+      fetchAll('client_history', q => q.order('date', { ascending: false }))
+    ]);
+    cache.clients = clients.map(toClient);
+    cache.history = history.map(toHistory);
+    changed();
+  } catch { /* a próxima atualização completa resolve */ }
+}
+
+/** Agendamento criado pelo painel (admin ou colaboradora). */
+export async function createBooking(data: Omit<Booking, 'id' | 'createdAt'>): Promise<{ booking: Booking | null; error?: string }> {
   if (!data.clientName || data.clientName.trim().length < 2) {
     return { booking: null, error: 'Nome do cliente é obrigatório (mínimo 2 caracteres).' };
   }
-  if (!data.clientPhone || data.clientPhone.replace(/\D/g, '').length < 8) {
-    return { booking: null, error: 'Telefone do cliente é obrigatório e inválido.' };
+  const phone = normalizeBrazilianPhone(data.clientPhone);
+  if (phone.length < 12 || phone.length > 13) {
+    return { booking: null, error: 'Telefone do cliente inválido. Use DDD + número.' };
   }
-  if (data.price < 0 || isNaN(data.price)) {
-    return { booking: null, error: 'Valor do serviço inválido.' };
-  }
-  if (data.duration <= 0 || isNaN(data.duration)) {
-    return { booking: null, error: 'Duração do serviço inválida.' };
-  }
+  if (!(data.price >= 0)) return { booking: null, error: 'Valor do serviço inválido.' };
+  if (!(data.duration > 0)) return { booking: null, error: 'Duração do serviço inválida.' };
 
-  const normalizedPhone = normalizeBrazilianPhone(data.clientPhone);
-
-  // 1. Proteção contra clique duplo e repetição da mesma solicitação (últimos 15 segundos)
-  const recentBookings = getBookings();
-  const duplicate = recentBookings.find(b => 
-    b.professionalId === data.professionalId &&
-    b.date === data.date &&
-    b.time === data.time &&
-    b.clientName.trim().toLowerCase() === data.clientName.trim().toLowerCase() &&
-    b.status !== 'cancelado' &&
-    (Date.now() - new Date(b.createdAt).getTime()) < 15000
-  );
-  if (duplicate) {
-    return { booking: duplicate };
+  const { conflict, conflictWith } = validateConflict(data.professionalId, data.date, data.time, data.duration);
+  if (conflict) {
+    return { booking: null, error: `Conflito com o agendamento de ${conflictWith?.clientName} às ${conflictWith?.time}.` };
   }
 
-  // 2. Validação da janela de disponibilidade completa (expediente, pausas, bloqueios e reservas ativas)
-  const startMin = timeToMinutes(data.time);
-  const isAvailable = isProfessionalAvailableForWindow(
-    data.professionalId,
-    data.date,
-    startMin,
-    data.duration,
-    recentBookings
-  );
-  if (!isAvailable) {
-    return { 
-      booking: null, 
-      error: 'O horário selecionado não está mais disponível para esta profissional na data escolhida. Por favor, selecione outro horário.' 
-    };
-  }
+  const { data: row, error } = await getSupabase().from('bookings').insert({
+    service_id: data.serviceId,
+    service_name: data.serviceName,
+    professional_id: data.professionalId,
+    professional_name: data.professionalName,
+    client_name: data.clientName.trim(),
+    client_phone: phone,
+    client_email: data.clientEmail?.trim() || null,
+    date: data.date,
+    start_time: data.time,
+    duration: data.duration,
+    notes: data.notes?.trim() || null,
+    status: data.status,
+    price: data.price,
+    origin: data.origin
+  }).select().single();
 
-  const pro = getProfessionals().find(p => p.id === data.professionalId);
-  const settings = getBusinessSettings();
-  const rate = pro?.commissionRate ?? settings.commissionDefaultRate ?? 0.5;
-
-  const user = getCurrentUser();
-  const [h, m] = data.time.split(':').map(Number);
-  const endMin = h * 60 + m + data.duration;
-  const endHour = Math.floor(endMin / 60);
-  const endMinutes = endMin % 60;
-  const endTime = `${String(endHour).padStart(2, '0')}:${String(endMinutes).padStart(2, '0')}`;
-
-  const booking: Booking = {
-    ...data,
-    clientPhone: normalizedPhone,
-    id: 'bk_' + genId(),
-    endTime,
-    commissionRate: rate,
-    commissionAmount: data.price * rate,
-    createdBy: user?.id,
-    createdByName: user?.name,
-    origin: data.origin || 'site',
-    createdAt: new Date().toISOString()
-  };
-
-  const list = getBookings();
-  list.unshift(booking);
-  setList(KEYS.bookings, list);
-
-  // Sync client record and history
-  syncClient(booking);
-  if (booking.status === 'concluido') {
-    addToClientHistory(booking);
-  }
-
-  // Queue notification
-  enqueueNotificationJob(booking, 'booking_created');
-
-  audit('create_booking', 'booking', booking.id, undefined, booking);
+  if (error) return { booking: null, error: friendlyDbError(error) };
+  const booking = upsertBookingInCache(row as Row);
+  changed();
+  refreshClientsAndHistory();
   return { booking };
 }
 
-export function updateBooking(id: string, updates: Partial<Booking>): { booking: Booking | null; error?: string } {
-  const list = getBookings();
-  const idx = list.findIndex(b => b.id === id);
-  if (idx === -1) return { booking: null, error: 'Agendamento não encontrado.' };
+export async function updateBooking(id: string, updates: Partial<Booking>): Promise<{ booking: Booking | null; error?: string }> {
+  const prev = getBookingById(id);
+  if (!prev) return { booking: null, error: 'Agendamento não encontrado.' };
 
-  const prev = { ...list[idx] };
-  const willBeActive = (updates.status ?? prev.status) !== 'cancelado';
-  const wasCancelled = prev.status === 'cancelado';
+  const status = updates.status ?? prev.status;
+  if (status === 'cancelado' && prev.status !== 'cancelado') {
+    const reason = (updates.cancelReason ?? '').trim();
+    if (reason.length < 3) return { booking: null, error: 'Informe o motivo do cancelamento (mínimo 3 caracteres).' };
+  }
 
-  // Re-validate conflict if changing date/time/pro/duration OR if reactivating a cancelled booking
-  if (
-    updates.time || updates.date || updates.professionalId || updates.duration ||
-    (wasCancelled && willBeActive)
-  ) {
-    const professionalId = updates.professionalId ?? list[idx].professionalId;
-    const date = updates.date ?? list[idx].date;
-    const startTime = updates.time ?? list[idx].time;
-    const duration = updates.duration ?? list[idx].duration;
-    const startMin = timeToMinutes(startTime);
-
-    const isAvailable = isProfessionalAvailableForWindow(
-      professionalId,
-      date,
-      startMin,
-      duration,
-      list,
+  // Mudou horário ou está reativando um cancelado: confere a agenda antes de enviar
+  const moving = updates.time || updates.date || updates.professionalId || updates.duration;
+  const reactivating = prev.status === 'cancelado' && status !== 'cancelado';
+  if (moving || reactivating) {
+    const ok = isProfessionalAvailableForWindow(
+      updates.professionalId ?? prev.professionalId,
+      updates.date ?? prev.date,
+      timeToMinutes(updates.time ?? prev.time),
+      updates.duration ?? prev.duration,
+      cache.bookings,
       id
     );
-    if (!isAvailable) {
-      return { booking: null, error: 'Horário indisponível! Conflito de agenda ou fora do horário de funcionamento.' };
-    }
-
-    // Recalc endTime
-    const [h, m] = startTime.split(':').map(Number);
-    const endMin = h * 60 + m + duration;
-    updates.endTime = `${String(Math.floor(endMin / 60)).padStart(2, '0')}:${String(endMin % 60).padStart(2, '0')}`;
+    if (!ok) return { booking: null, error: 'Horário indisponível! Conflito de agenda ou fora do horário de funcionamento.' };
   }
 
-  if (updates.clientPhone) {
-    updates.clientPhone = normalizeBrazilianPhone(updates.clientPhone);
+  const patch: Row = {};
+  if (updates.status !== undefined) patch.status = updates.status;
+  if (updates.price !== undefined) patch.price = updates.price;
+  if (updates.notes !== undefined) patch.notes = updates.notes?.trim() || null;
+  if (updates.date !== undefined) patch.date = updates.date;
+  if (updates.time !== undefined) patch.start_time = updates.time;
+  if (updates.duration !== undefined) patch.duration = updates.duration;
+  if (updates.professionalId !== undefined) {
+    patch.professional_id = updates.professionalId;
+    patch.professional_name = updates.professionalName ?? null;
   }
+  if (updates.clientName !== undefined) patch.client_name = updates.clientName.trim();
+  if (updates.clientPhone !== undefined) patch.client_phone = normalizeBrazilianPhone(updates.clientPhone);
+  if (updates.paymentStatus !== undefined) patch.payment_status = updates.paymentStatus;
+  if (updates.paymentMethod !== undefined) patch.payment_method = updates.paymentMethod || null;
+  if (updates.rescheduleHistory !== undefined) patch.reschedule_history = updates.rescheduleHistory;
+  if (updates.cancelReason !== undefined) patch.cancel_reason = updates.cancelReason.trim() || null;
+  if (status !== 'cancelado' && prev.status === 'cancelado') patch.cancel_reason = null;
 
-  // Preserve commission rate applied at completion
-  if (updates.status === 'concluido') {
-    const pro = getProfessionals().find(p => p.id === (updates.professionalId ?? prev.professionalId));
-    const rate = prev.commissionRate ?? pro?.commissionRate ?? 0.5;
-    const price = updates.price ?? prev.price;
-    updates.commissionRate = rate;
-    updates.commissionAmount = price * rate;
-  }
-
-  const user = getCurrentUser();
-  list[idx] = {
-    ...list[idx],
-    ...updates,
-    updatedBy: user?.id,
-    updatedByName: user?.name,
-    updatedAt: new Date().toISOString()
-  };
-  setList(KEYS.bookings, list);
-
-  // Sync client record
-  syncClient(list[idx]);
-
-  // Sync history entry
-  if (list[idx].status === 'concluido') {
-    addToClientHistory(list[idx]);
-  } else {
-    updateClientHistoryStatus(list[idx]);
-  }
-
-  // Handle notifications
-  if (updates.status === 'cancelado' && prev.status !== 'cancelado') {
-    cancelNotificationJobsForBooking(id);
-    enqueueNotificationJob(list[idx], 'booking_cancelled');
-  }
-
-  audit('update_booking', 'booking', id, prev, list[idx]);
-  return { booking: list[idx] };
+  const { data, error } = await getSupabase().from('bookings').update(patch).eq('id', id).select().single();
+  if (error) return { booking: null, error: friendlyDbError(error) };
+  const booking = upsertBookingInCache(data as Row);
+  changed();
+  if (updates.status !== undefined || updates.price !== undefined) refreshClientsAndHistory();
+  return { booking };
 }
 
-/** Remarcar (Reschedule) an appointment with full history tracking */
-export function rescheduleBooking(
+/** Remarcar com motivo; o histórico de remarcações fica no próprio agendamento. */
+export async function rescheduleBooking(
   id: string,
-  data: {
-    newDate: string;
-    newTime: string;
-    newProfessionalId: string;
-    reason: string;
-  }
-): { booking: Booking | null; error?: string } {
-  const list = getBookings();
-  const idx = list.findIndex(b => b.id === id);
-  if (idx === -1) return { booking: null, error: 'Agendamento não encontrado.' };
-
-  const current = list[idx];
-
+  data: { newDate: string; newTime: string; newProfessionalId: string; reason: string }
+): Promise<{ booking: Booking | null; error?: string }> {
+  const current = getBookingById(id);
+  if (!current) return { booking: null, error: 'Agendamento não encontrado.' };
   if (!data.newDate || !data.newTime || !data.newProfessionalId) {
     return { booking: null, error: 'Selecione nova data, horário e profissional.' };
   }
@@ -423,21 +549,14 @@ export function rescheduleBooking(
     return { booking: null, error: 'Informe o motivo da remarcação (mínimo 3 caracteres).' };
   }
 
-  const { conflict, conflictWith } = validateConflict(
-    data.newProfessionalId, data.newDate, data.newTime, current.duration, id
-  );
+  const { conflict, conflictWith } = validateConflict(data.newProfessionalId, data.newDate, data.newTime, current.duration, id);
   if (conflict) {
     return { booking: null, error: `Conflito no novo horário com agendamento de ${conflictWith?.clientName} às ${conflictWith?.time}.` };
   }
 
   const newPro = getProfessionals().find(p => p.id === data.newProfessionalId);
   const user = getCurrentUser();
-
-  const [h, m] = data.newTime.split(':').map(Number);
-  const endMin = h * 60 + m + current.duration;
-  const endTime = `${String(Math.floor(endMin / 60)).padStart(2, '0')}:${String(endMin % 60).padStart(2, '0')}`;
-
-  const rescheduleEntry = {
+  const entry: RescheduleEntry = {
     previousDate: current.date,
     previousTime: current.time,
     previousProfessionalId: current.professionalId,
@@ -452,455 +571,317 @@ export function rescheduleBooking(
     changedByName: user?.name
   };
 
-  const updatedHistory = [...(current.rescheduleHistory || []), rescheduleEntry];
-
   return updateBooking(id, {
     date: data.newDate,
     time: data.newTime,
-    endTime,
     professionalId: data.newProfessionalId,
-    professionalName: newPro?.name ?? data.newProfessionalId,
-    rescheduleHistory: updatedHistory,
+    professionalName: newPro?.name,
+    rescheduleHistory: [...(current.rescheduleHistory ?? []), entry],
     status: current.status === 'cancelado' ? 'pendente' : current.status
   });
 }
 
-export function deleteBooking(id: string): boolean {
-  const list = getBookings();
-  const prev = list.find(b => b.id === id);
-  const filtered = list.filter(b => b.id !== id);
-  setList(KEYS.bookings, filtered);
-  cancelNotificationJobsForBooking(id);
-  audit('delete_booking', 'booking', id, prev, undefined);
-  return true;
+/** Apagar de vez (só a administradora). No dia a dia, prefira cancelar com motivo. */
+export async function deleteBooking(id: string): Promise<{ error?: string }> {
+  const { error, count } = await getSupabase().from('bookings').delete({ count: 'exact' }).eq('id', id);
+  if (error) return { error: friendlyDbError(error) };
+  if (count === 0) return { error: 'Você não tem permissão para remover este agendamento.' };
+  cache.bookings = cache.bookings.filter(b => b.id !== id);
+  changed();
+  refreshClientsAndHistory();
+  return {};
 }
 
-// ─────────────────────────────────────
-// CLIENTS & HISTORY SYNC
-// ─────────────────────────────────────
+// ═════════════════════════════════════════════
+// AGENDAMENTO PELO SITE (visitante, sem login)
+// ═════════════════════════════════════════════
+
+export interface PublicSlot {
+  time: string;
+  professionalIds: string[];
+}
+
+/** Horários livres calculados pelo banco (não revela dados de outras clientes). */
+export async function fetchAvailableSlots(serviceId: string, date: string, professionalId: string | null): Promise<PublicSlot[]> {
+  const { data, error } = await getSupabase().rpc('get_available_slots', {
+    p_service_id: serviceId,
+    p_date: date,
+    p_professional_id: professionalId
+  });
+  if (error) throw new Error(friendlyDbError(error));
+  return ((data as Row[]) ?? []).map(r => ({
+    time: hhmm(r.slot_time),
+    professionalIds: (r.professional_ids as string[]) ?? []
+  }));
+}
+
+export async function createPublicBooking(data: {
+  serviceId: string;
+  date: string;
+  time: string;
+  clientName: string;
+  clientPhone: string;
+  professionalId: string | null;
+  clientEmail?: string;
+  notes?: string;
+}): Promise<{ booking: Booking | null; error?: string }> {
+  const { data: result, error } = await getSupabase().rpc('create_public_booking', {
+    p_service_id: data.serviceId,
+    p_date: data.date,
+    p_time: data.time,
+    p_client_name: data.clientName,
+    p_client_phone: data.clientPhone,
+    p_professional_id: data.professionalId,
+    p_client_email: data.clientEmail || null,
+    p_notes: data.notes || null
+  });
+  if (error) return { booking: null, error: friendlyDbError(error) };
+
+  const r = result as { success: boolean; error?: string; booking?: Row };
+  if (!r?.success || !r.booking) return { booking: null, error: r?.error ?? 'Não foi possível concluir o agendamento.' };
+
+  const b = r.booking;
+  return {
+    booking: {
+      id: String(b.id),
+      serviceId: String(b.serviceId),
+      serviceName: String(b.serviceName),
+      professionalId: String(b.professionalId),
+      professionalName: String(b.professionalName),
+      date: String(b.date),
+      time: String(b.time),
+      endTime: String(b.endTime),
+      duration: num(b.duration),
+      clientName: data.clientName.trim(),
+      clientPhone: normalizeBrazilianPhone(data.clientPhone),
+      clientEmail: data.clientEmail,
+      notes: data.notes,
+      status: b.status as BookingStatus,
+      price: num(b.price),
+      origin: 'site',
+      createdAt: new Date().toISOString()
+    }
+  };
+}
+
+// ═════════════════════════════════════════════
+// CLIENTES E HISTÓRICO
+// ═════════════════════════════════════════════
 
 export function getClients(): Client[] {
-  return getList<Client>(KEYS.clients);
+  return cache.clients;
 }
 
 export function getClientById(id: string): Client | undefined {
-  return getClients().find(c => c.id === id);
+  return cache.clients.find(c => c.id === id);
 }
 
 export function getClientByPhone(phone: string): Client | undefined {
   const normalized = normalizeBrazilianPhone(phone);
-  return getClients().find(c => normalizeBrazilianPhone(c.phone) === normalized);
-}
-
-function syncClient(booking: Booking): void {
-  const clients = getClients();
-  const normalized = normalizeBrazilianPhone(booking.clientPhone);
-  const existingIdx = clients.findIndex(c => normalizeBrazilianPhone(c.phone) === normalized);
-
-  const allClientBookings = getBookings().filter(
-    b => normalizeBrazilianPhone(b.clientPhone) === normalized
-  );
-
-  const nonCancelledBookings = allClientBookings.filter(b => b.status !== 'cancelado');
-  const completedBookings = allClientBookings.filter(b => b.status === 'concluido');
-
-  const totalSpent = completedBookings.reduce((sum, b) => sum + b.price, 0);
-  const lastVisitDate = completedBookings.sort((a, b) => b.date.localeCompare(a.date))[0]?.date;
-  const firstVisitDate = nonCancelledBookings.sort((a, b) => a.date.localeCompare(b.date))[0]?.date;
-
-  if (existingIdx >= 0) {
-    const existing = clients[existingIdx];
-    clients[existingIdx] = {
-      ...existing,
-      name: booking.clientName,
-      email: booking.clientEmail ?? existing.email,
-      totalVisits: nonCancelledBookings.length,
-      totalSpent,
-      firstVisit: firstVisitDate ?? existing.firstVisit,
-      lastVisit: lastVisitDate ?? existing.lastVisit,
-      updatedAt: new Date().toISOString()
-    };
-  } else {
-    const newClient: Client = {
-      id: 'cli_' + genId(),
-      phone: booking.clientPhone,
-      name: booking.clientName,
-      email: booking.clientEmail,
-      firstVisit: firstVisitDate ?? booking.date,
-      lastVisit: lastVisitDate,
-      totalVisits: nonCancelledBookings.length,
-      totalSpent,
-      createdAt: new Date().toISOString()
-    };
-    clients.push(newClient);
-  }
-  setList(KEYS.clients, clients);
-}
-
-export function createOrUpdateClient(data: Partial<Client> & { phone: string; name: string }): Client {
-  const clients = getClients();
-  const normalized = normalizeBrazilianPhone(data.phone);
-  const existingIdx = clients.findIndex(c => normalizeBrazilianPhone(c.phone) === normalized);
-
-  if (existingIdx >= 0) {
-    clients[existingIdx] = { ...clients[existingIdx], ...data, phone: normalized, updatedAt: new Date().toISOString() };
-    setList(KEYS.clients, clients);
-    return clients[existingIdx];
-  }
-
-  const newClient: Client = {
-    id: 'cli_' + genId(),
-    totalVisits: 0,
-    totalSpent: 0,
-    createdAt: new Date().toISOString(),
-    ...data,
-    phone: normalized
-  };
-  clients.push(newClient);
-  setList(KEYS.clients, clients);
-  return newClient;
+  return cache.clients.find(c => c.phone === normalized);
 }
 
 export function getClientHistory(clientId: string): ClientHistoryEntry[] {
-  return getList<ClientHistoryEntry>(KEYS.history)
-    .filter(h => h.clientId === clientId)
-    .sort((a, b) => b.date.localeCompare(a.date));
+  return cache.history.filter(h => h.clientId === clientId).sort((a, b) => b.date.localeCompare(a.date));
 }
 
-function addToClientHistory(booking: Booking): void {
-  const client = getClientByPhone(booking.clientPhone);
-  if (!client) return;
-
-  const history = getList<ClientHistoryEntry>(KEYS.history);
-  const existingIdx = history.findIndex(h => h.bookingId === booking.id);
-
-  const entry: ClientHistoryEntry = {
-    id: existingIdx >= 0 ? history[existingIdx].id : 'hist_' + genId(),
-    clientId: client.id,
-    bookingId: booking.id,
-    serviceName: booking.serviceName,
-    professionalId: booking.professionalId,
-    professionalName: booking.professionalName,
-    date: booking.date,
-    price: booking.price,
-    commissionRate: booking.commissionRate,
-    commissionAmount: booking.commissionAmount,
-    status: booking.status,
-    notes: booking.notes,
-    origin: booking.origin,
-    addedManually: false,
-    createdBy: booking.createdBy,
-    createdByName: booking.createdByName,
-    createdAt: existingIdx >= 0 ? history[existingIdx].createdAt : new Date().toISOString()
-  };
-
-  if (existingIdx >= 0) {
-    history[existingIdx] = entry;
-  } else {
-    history.unshift(entry);
-  }
-  setList(KEYS.history, history);
-}
-
-function updateClientHistoryStatus(booking: Booking): void {
-  const history = getList<ClientHistoryEntry>(KEYS.history);
-  const idx = history.findIndex(h => h.bookingId === booking.id);
-  if (idx >= 0) {
-    history[idx] = {
-      ...history[idx],
-      status: booking.status,
-      date: booking.date,
-      price: booking.price
-    };
-    setList(KEYS.history, history);
-  }
-}
-
-export function addManualHistoryEntry(
+/** Lança no histórico um atendimento antigo (feito antes do sistema, por exemplo). */
+export async function addManualHistoryEntry(
   clientId: string,
-  data: {
-    serviceName: string;
-    professionalId: string;
-    professionalName: string;
-    date: string;
-    price: number;
-    notes?: string;
-  }
-): ClientHistoryEntry {
+  data: { serviceName: string; professionalId: string; professionalName: string; date: string; price: number; notes?: string }
+): Promise<{ entry: ClientHistoryEntry | null; error?: string }> {
   const user = getCurrentUser();
   const pro = getProfessionals().find(p => p.id === data.professionalId);
-  const settings = getBusinessSettings();
-  const rate = pro?.commissionRate ?? settings.commissionDefaultRate ?? 0.5;
+  const rate = pro?.commissionRate ?? getBusinessSettings().commissionDefaultRate ?? 0.5;
 
-  const entry: ClientHistoryEntry = {
-    id: 'hist_' + genId(),
-    clientId,
-    serviceName: data.serviceName,
-    professionalId: data.professionalId,
-    professionalName: data.professionalName,
+  const { data: row, error } = await getSupabase().from('client_history').insert({
+    client_id: clientId,
+    service_name: data.serviceName,
+    professional_id: data.professionalId,
+    professional_name: data.professionalName,
     date: data.date,
     price: data.price,
-    commissionRate: rate,
-    commissionAmount: data.price * rate,
+    commission_rate: rate,
+    commission_amount: Math.round(data.price * rate * 100) / 100,
     status: 'concluido',
-    notes: data.notes,
-    origin: 'manual_admin',
-    addedManually: true,
-    createdBy: user?.id,
-    createdByName: user?.name,
-    createdAt: new Date().toISOString()
-  };
-  const history = getList<ClientHistoryEntry>(KEYS.history);
-  history.unshift(entry);
-  setList(KEYS.history, history);
+    notes: data.notes?.trim() || null,
+    origin: user?.role === 'admin' ? 'manual_admin' : 'manual_colaboradora',
+    added_manually: true,
+    created_by: user?.id ?? null,
+    created_by_name: user?.name ?? null
+  }).select().single();
 
-  // Recalculate client totals
-  const client = getClientById(clientId);
-  if (client) {
-    const allHistory = getClientHistory(clientId).filter(h => h.status === 'concluido');
-    const totalSpent = allHistory.reduce((s, h) => s + h.price, 0);
-    const lastVisit = allHistory.sort((a, b) => b.date.localeCompare(a.date))[0]?.date ?? client.lastVisit;
-    createOrUpdateClient({
-      phone: client.phone,
-      name: client.name,
-      totalSpent,
-      lastVisit
-    });
-  }
-
-  audit('add_manual_history', 'client_history', clientId, undefined, entry);
-  return entry;
+  if (error) return { entry: null, error: friendlyDbError(error) };
+  const entry = toHistory(row as Row);
+  cache.history = [entry, ...cache.history];
+  changed();
+  return { entry };
 }
 
-// ─────────────────────────────────────
-// AVAILABILITY RULES & SCHEDULE BLOCKS
-// ─────────────────────────────────────
+// ═════════════════════════════════════════════
+// HORÁRIO PRÓPRIO E BLOQUEIOS
+// ═════════════════════════════════════════════
 
 export function getAvailabilityRules(professionalId?: string): AvailabilityRule[] {
-  const all = getList<AvailabilityRule>(KEYS.availability);
-  if (professionalId) return all.filter(r => r.professionalId === professionalId);
-  return all;
+  return professionalId ? cache.rules.filter(r => r.professionalId === professionalId) : cache.rules;
 }
 
+/** Horário padrão quando a profissional não tem regra própria: segue o salão. */
 export function getDefaultAvailabilityRules(professionalId: string): AvailabilityRule[] {
-  const rules: AvailabilityRule[] = [];
-  for (const day of [2, 3, 4, 5] as const) {
-    rules.push({
-      id: `default_${professionalId}_${day}`,
+  return getBusinessSettings().openingHours
+    .filter(h => !h.closed && h.open && h.close)
+    .map(h => ({
+      id: `default_${professionalId}_${h.dayOfWeek}`,
       professionalId,
-      dayOfWeek: day,
-      startTime: '08:00',
-      endTime: '18:00',
-      breakStart: '11:30',
-      breakEnd: '14:00',
+      dayOfWeek: h.dayOfWeek as AvailabilityRule['dayOfWeek'],
+      startTime: h.open,
+      endTime: h.close,
+      breakStart: h.breakStart,
+      breakEnd: h.breakEnd,
       slotDuration: 30,
       active: true
-    });
-  }
-  rules.push({
-    id: `default_${professionalId}_6`,
-    professionalId,
-    dayOfWeek: 6,
-    startTime: '08:00',
-    endTime: '18:00',
-    slotDuration: 30,
-    active: true
-  });
-  return rules;
+    }));
 }
 
-export function upsertAvailabilityRule(rule: Omit<AvailabilityRule, 'id'> & { id?: string }): AvailabilityRule {
-  const list = getList<AvailabilityRule>(KEYS.availability);
-  const id = rule.id ?? 'avail_' + genId();
-  const existing = list.findIndex(r => r.id === id);
-  const final: AvailabilityRule = { ...rule, id };
-  if (existing >= 0) {
-    list[existing] = final;
-  } else {
-    list.push(final);
-  }
-  setList(KEYS.availability, list);
-  return final;
+export async function upsertAvailabilityRule(rule: Omit<AvailabilityRule, 'id'> & { id?: string }): Promise<{ error?: string }> {
+  const row: Row = {
+    professional_id: rule.professionalId,
+    day_of_week: rule.dayOfWeek,
+    start_time: rule.startTime,
+    end_time: rule.endTime,
+    break_start: rule.breakStart ?? null,
+    break_end: rule.breakEnd ?? null,
+    slot_duration: rule.slotDuration,
+    active: rule.active
+  };
+  if (rule.id && !rule.id.startsWith('default_')) row.id = rule.id;
+  const { data, error } = await getSupabase().from('availability_rules').upsert(row).select().single();
+  if (error) return { error: friendlyDbError(error) };
+  const saved = toRule(data as Row);
+  cache.rules = [...cache.rules.filter(r => r.id !== saved.id), saved];
+  changed();
+  return {};
 }
 
 export function getScheduleBlocks(professionalId?: string): ScheduleBlock[] {
-  const all = getList<ScheduleBlock>(KEYS.blocks);
-  if (professionalId) return all.filter(b => b.professionalId === professionalId);
-  return all;
+  return professionalId ? cache.blocks.filter(b => b.professionalId === professionalId) : cache.blocks;
 }
 
-export function createScheduleBlock(data: Omit<ScheduleBlock, 'id' | 'createdAt'>): ScheduleBlock {
-  const user = getCurrentUser();
-  const block: ScheduleBlock = {
-    ...data,
-    id: 'blk_' + genId(),
-    createdBy: user?.id,
-    createdAt: new Date().toISOString()
-  };
-  const list = getList<ScheduleBlock>(KEYS.blocks);
-  list.push(block);
-  setList(KEYS.blocks, list);
-  audit('create_block', 'schedule_block', block.id, undefined, block);
-  return block;
+export async function createScheduleBlock(data: Omit<ScheduleBlock, 'id' | 'createdAt'>): Promise<{ error?: string }> {
+  const { data: row, error } = await getSupabase().from('schedule_blocks').insert({
+    professional_id: data.professionalId,
+    date: data.date ?? null,
+    start_time: data.allDay ? null : data.startTime ?? null,
+    end_time: data.allDay ? null : data.endTime ?? null,
+    all_day: data.allDay,
+    reason: data.reason ?? null,
+    type: data.type,
+    created_by: getCurrentUser()?.id ?? null
+  }).select().single();
+  if (error) return { error: friendlyDbError(error) };
+  cache.blocks = [...cache.blocks, toBlock(row as Row)];
+  changed();
+  return {};
 }
 
-export function deleteScheduleBlock(id: string): boolean {
-  const list = getList<ScheduleBlock>(KEYS.blocks);
-  const prev = list.find(b => b.id === id);
-  setList(KEYS.blocks, list.filter(b => b.id !== id));
-  audit('delete_block', 'schedule_block', id, prev, undefined);
-  return true;
+export async function deleteScheduleBlock(id: string): Promise<{ error?: string }> {
+  const { error } = await getSupabase().from('schedule_blocks').delete().eq('id', id);
+  if (error) return { error: friendlyDbError(error) };
+  cache.blocks = cache.blocks.filter(b => b.id !== id);
+  changed();
+  return {};
 }
 
-// ─────────────────────────────────────
-// AUDIT LOGS
-// ─────────────────────────────────────
+// ═════════════════════════════════════════════
+// CONFIGURAÇÕES DO SALÃO (só administradora)
+// ═════════════════════════════════════════════
+
+export async function updateBusinessSettings(settings: BusinessSettings): Promise<{ error?: string }> {
+  const supabase = getSupabase();
+  const { error } = await supabase.from('business_settings').update({
+    salon_name: settings.salonName,
+    address: settings.address,
+    city: settings.city,
+    state: settings.state,
+    instagram_url: settings.instagramUrl || null,
+    business_whatsapp: settings.businessWhatsapp ? normalizeBrazilianPhone(settings.businessWhatsapp) : null,
+    business_whatsapp_message: settings.businessWhatsappMessage || null,
+    commission_default_rate: settings.commissionDefaultRate,
+    min_lead_time_minutes: settings.minLeadTimeMinutes,
+    max_advance_days: settings.maxAdvanceDays
+  }).eq('id', 1);
+  if (error) return { error: friendlyDbError(error) };
+
+  const hours = settings.openingHours.map(h => ({
+    day_of_week: h.dayOfWeek,
+    closed: h.closed,
+    open_time: h.closed ? null : h.open || null,
+    close_time: h.closed ? null : h.close || null,
+    break_start: h.closed ? null : h.breakStart || null,
+    break_end: h.closed ? null : h.breakEnd || null
+  }));
+  const { error: hoursError } = await supabase.from('business_hours').upsert(hours);
+  if (hoursError) return { error: friendlyDbError(hoursError) };
+
+  await loadPublicData();
+  return {};
+}
+
+// ═════════════════════════════════════════════
+// EQUIPE E ACESSOS (só administradora)
+// ═════════════════════════════════════════════
+
+export function listStaff(): StaffMember[] {
+  return cache.staff;
+}
+
+export async function setStaffActive(userId: string, active: boolean): Promise<{ error?: string }> {
+  if (userId === getCurrentUser()?.id && !active) return { error: 'Você não pode desativar o seu próprio acesso.' };
+  const { data, error } = await getSupabase().from('staff_members').update({ active }).eq('user_id', userId).select().single();
+  if (error) return { error: friendlyDbError(error) };
+  cache.staff = cache.staff.map(s => (s.userId === userId ? toStaff(data as Row) : s));
+  changed();
+  return {};
+}
+
+/** Chama a função segura do servidor que cuida das contas da equipe. */
+async function callStaffFunction(body: Record<string, unknown>, fallback: string): Promise<{ error?: string }> {
+  const { data: result, error } = await getSupabase().functions.invoke('criar-acesso-equipe', { body });
+  if (error) {
+    let message = fallback;
+    try {
+      const payload = await (error as { context?: Response }).context?.json();
+      if (payload?.error) message = payload.error;
+    } catch { /* mantém a mensagem padrão */ }
+    return { error: message };
+  }
+  if ((result as { error?: string })?.error) return { error: (result as { error: string }).error };
+  return {};
+}
+
+/** Cria o acesso de uma pessoa da equipe com senha inicial. */
+export async function createStaffAccount(data: {
+  email: string; name: string; role: UserRole; professionalId?: string; password: string;
+}): Promise<{ error?: string }> {
+  const result = await callStaffFunction({ action: 'criar', ...data }, 'Não foi possível criar o acesso. Tente de novo.');
+  if (!result.error) await loadStaffData();
+  return result;
+}
+
+/** Define uma senha nova para alguém da equipe que esqueceu a sua. */
+export async function resetStaffPassword(userId: string, password: string): Promise<{ error?: string }> {
+  return callStaffFunction({ action: 'redefinir_senha', userId, password }, 'Não foi possível definir a senha. Tente de novo.');
+}
+
+// ═════════════════════════════════════════════
+// REGISTRO DE ALTERAÇÕES E MENSAGENS
+// ═════════════════════════════════════════════
 
 export function getAuditLogs(limit = 100): AuditLog[] {
-  return getList<AuditLog>(KEYS.auditLogs).slice(0, limit);
+  return cache.auditLogs.slice(0, limit);
 }
 
-// ─────────────────────────────────────
-// DEMO DATA SEEDING (RESTRICTED TO DEMO MODE)
-// ─────────────────────────────────────
-
-// Pares nome + telefone dos agendamentos fictícios gravados por versões antigas do site.
-const LEGACY_DEMO_CLIENTS = new Set([
-  'Ana Paula Santos|5538988451243', 'Beatriz Souza|5538991223847', 'Camila Lima|5538998231122',
-  'Débora Santos|5538991045544', 'Amanda Silva|5538992014477', 'Juliana Costa|5538988227711',
-  'Patrícia Alves|5538991448855', 'Letícia Dias|5538999205521', 'Bruna Gomes|5538992001122',
-  'Sofia Melo|5538991823847'
-]);
-
-/** Remove do navegador os agendamentos fictícios antigos, sem tocar em agendamentos reais. */
-function removeLegacyDemoData(): void {
-  if (!localStorage.getItem(KEYS.demoSeeded)) return;
-  const bookings = getList<Booking>(KEYS.bookings);
-  const demoIds = new Set(
-    bookings.filter(b => LEGACY_DEMO_CLIENTS.has(`${b.clientName}|${b.clientPhone}`)).map(b => b.id)
-  );
-  if (demoIds.size > 0) {
-    setList(KEYS.bookings, bookings.filter(b => !demoIds.has(b.id)));
-    setList(KEYS.history, getList<ClientHistoryEntry>(KEYS.history).filter(h => !h.bookingId || !demoIds.has(h.bookingId)));
-    setList(KEYS.notifications, getList<NotificationJob>(KEYS.notifications).filter(n => !demoIds.has(n.bookingId)));
-    setList(KEYS.clients, []); // reconstruído logo abaixo a partir dos agendamentos restantes
-  }
-  localStorage.removeItem(KEYS.demoSeeded);
-}
-
-export function seedDemoData(): void {
-  if (!import.meta.env.DEV) removeLegacyDemoData();
-
-  // Check if demo data is already initialized
-  const seededFlag = localStorage.getItem(KEYS.demoSeeded);
-  const existingBookings = getList<Booking>(KEYS.bookings);
-
-  if (seededFlag || existingBookings.length > 0) {
-    rebuildClientsFromBookings();
-    return;
-  }
-
-  // Agendamentos fictícios só no ambiente local (npm run dev), nunca no site publicado.
-  if (!import.meta.env.DEV) return;
-
-  // Populate initial demo data ONLY on first launch of demo workspace
-  const getRelativeDate = (offsetDays: number) => {
-    const d = new Date();
-    d.setDate(d.getDate() + offsetDays);
-    return d.toISOString().split('T')[0];
-  };
-
-  const demoBookings: Omit<Booking, 'id' | 'createdAt'>[] = [
-    { serviceId:'corte', serviceName:'Corte Feminino', professionalId:'railma', professionalName:'Railma', date:getRelativeDate(-2), time:'09:00', duration:60, clientName:'Ana Paula Santos', clientPhone:'5538988451243', clientEmail:'anapaula@gmail.com', status:'concluido', price:70, commissionRate:0.5, commissionAmount:35, origin:'site', endTime:'10:00' },
-    { serviceId:'pe-e-mao', serviceName:'Pé e Mão', professionalId:'evelyn', professionalName:'Evelyn', date:getRelativeDate(-2), time:'14:30', duration:80, clientName:'Beatriz Souza', clientPhone:'5538991223847', status:'concluido', price:70, commissionRate:0.5, commissionAmount:35, origin:'site', endTime:'15:50' },
-    { serviceId:'progressiva-sem-formol', serviceName:'Progressiva Sem Formol', professionalId:'railma', professionalName:'Railma', date:getRelativeDate(-1), time:'08:30', duration:150, clientName:'Camila Lima', clientPhone:'5538998231122', notes:'Possui mechas loiras', status:'concluido', price:210, commissionRate:0.5, commissionAmount:105, origin:'site', endTime:'11:00' },
-    { serviceId:'hidratacao-ozonio', serviceName:'Hidratação + Ozonioterapia', professionalId:'railma', professionalName:'Railma', date:getRelativeDate(-1), time:'15:00', duration:50, clientName:'Débora Santos', clientPhone:'5538991045544', status:'concluido', price:120, commissionRate:0.5, commissionAmount:60, origin:'site', endTime:'15:50' },
-    { serviceId:'spa-dos-pes', serviceName:'Spa dos Pés', professionalId:'evelyn', professionalName:'Evelyn', date:getRelativeDate(0), time:'09:00', duration:40, clientName:'Amanda Silva', clientPhone:'5538992014477', status:'pendente', price:60, origin:'site', endTime:'09:40' },
-    { serviceId:'make-completa', serviceName:'Maquiagem + Cílios Postiços', professionalId:'maisa', professionalName:'Maísa Rodrigues', date:getRelativeDate(0), time:'11:00', duration:70, clientName:'Juliana Costa', clientPhone:'5538988227711', notes:'Formatura. Tons terrosos.', status:'pendente', price:180, origin:'site', endTime:'12:10' },
-    { serviceId:'drenagem-corporal', serviceName:'Drenagem Linfática', professionalId:'fabiane', professionalName:'Fabiane', date:getRelativeDate(0), time:'14:30', duration:60, clientName:'Patrícia Alves', clientPhone:'5538991448855', status:'pendente', price:100, origin:'site', endTime:'15:30' },
-    { serviceId:'design-henna', serviceName:'Design + Henna', professionalId:'railma', professionalName:'Railma', date:getRelativeDate(0), time:'16:00', duration:45, clientName:'Letícia Dias', clientPhone:'5538999205521', status:'pendente', price:55, origin:'site', endTime:'16:45' },
-    { serviceId:'escova-simples', serviceName:'Escova', professionalId:'railma', professionalName:'Railma', date:getRelativeDate(0), time:'17:00', duration:45, clientName:'Bruna Gomes', clientPhone:'5538992001122', status:'pendente', price:45, origin:'site', endTime:'17:45' },
-    { serviceId:'producao-noiva', serviceName:'Produção da Noiva (Experiência 01)', professionalId:'maisa', professionalName:'Maísa Rodrigues', date:getRelativeDate(1), time:'09:30', duration:90, clientName:'Sofia Melo', clientPhone:'5538991823847', notes:'Casamento civil.', status:'pendente', price:400, origin:'site', endTime:'11:00' }
-  ];
-
-  const bookings: Booking[] = demoBookings.map(b => ({
-    ...b,
-    id: 'bk_' + genId(),
-    createdAt: new Date().toISOString()
-  }));
-
-  setList(KEYS.bookings, bookings);
-  localStorage.setItem(KEYS.demoSeeded, 'true');
-  rebuildClientsFromBookings();
-}
-
-/** Explicitly reset demo data for testing */
-export function resetDemoData(): void {
-  localStorage.removeItem(KEYS.bookings);
-  localStorage.removeItem(KEYS.clients);
-  localStorage.removeItem(KEYS.history);
-  localStorage.removeItem(KEYS.notifications);
-  localStorage.removeItem(KEYS.demoSeeded);
-  seedDemoData();
-}
-
-function rebuildClientsFromBookings(): void {
-  const bookings = getList<Booking>(KEYS.bookings);
-  const clientMap = new Map<string, Client>();
-  const historyEntries: ClientHistoryEntry[] = [];
-
-  for (const b of bookings) {
-    const normalized = normalizeBrazilianPhone(b.clientPhone);
-    const existing = clientMap.get(normalized);
-
-    if (existing) {
-      if (b.status !== 'cancelado') existing.totalVisits += 1;
-      if (b.status === 'concluido') {
-        existing.totalSpent += b.price;
-        if (!existing.lastVisit || b.date > existing.lastVisit) existing.lastVisit = b.date;
-      }
-      if (!existing.firstVisit || b.date < existing.firstVisit) existing.firstVisit = b.date;
-    } else {
-      clientMap.set(normalized, {
-        id: 'cli_' + (normalized || genId()),
-        phone: b.clientPhone,
-        name: b.clientName,
-        email: b.clientEmail,
-        firstVisit: b.date,
-        lastVisit: b.status === 'concluido' ? b.date : undefined,
-        totalVisits: b.status !== 'cancelado' ? 1 : 0,
-        totalSpent: b.status === 'concluido' ? b.price : 0,
-        createdAt: b.createdAt
-      });
-    }
-
-    if (b.status === 'concluido') {
-      const clientId = 'cli_' + (normalized || genId());
-      if (!historyEntries.find(h => h.bookingId === b.id)) {
-        historyEntries.push({
-          id: 'hist_' + b.id,
-          clientId,
-          bookingId: b.id,
-          serviceName: b.serviceName,
-          professionalId: b.professionalId,
-          professionalName: b.professionalName,
-          date: b.date,
-          price: b.price,
-          commissionRate: b.commissionRate ?? 0.5,
-          commissionAmount: b.commissionAmount ?? (b.price * 0.5),
-          status: b.status,
-          notes: b.notes,
-          origin: b.origin || 'site',
-          addedManually: false,
-          createdAt: b.createdAt
-        });
-      }
-    }
-  }
-
-  setList(KEYS.clients, Array.from(clientMap.values()));
-  const existingHistory = getList<ClientHistoryEntry>(KEYS.history);
-  if (existingHistory.length === 0) {
-    setList(KEYS.history, historyEntries);
-  }
+/** A fila de WhatsApp agora fica só no banco; o painel ainda não a exibe. */
+export function getNotificationQueue(): NotificationJob[] {
+  return [];
 }
