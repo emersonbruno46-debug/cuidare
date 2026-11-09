@@ -1,128 +1,225 @@
 // ─────────────────────────────────────────────
-// CUIDARE — StaffManager
-// Gestão de profissionais e contas (Admin only)
+// CUIDARE — Equipe e acessos (só administradora)
+// Dados das profissionais e contas de acesso ao painel, gravados no Supabase.
 // ─────────────────────────────────────────────
 
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, Edit2, X, Check, Phone, UserCheck, UserX } from 'lucide-react';
-import type { Professional } from '../../types';
-import { getProfessionals, updateProfessional } from '../../lib/dataService';
-import { createAccount, listAccounts, toggleAccountActive } from '../../lib/auth';
+import { Plus, Edit2, X, Check, Phone, UserCheck, UserX, KeyRound, ShieldCheck } from 'lucide-react';
+import type { Professional, UserRole } from '../../types';
+import {
+  getProfessionals, updateProfessional, listStaff, setStaffActive, createStaffAccount, resetStaffPassword,
+  useDataVersion, type StaffMember
+} from '../../lib/dataService';
+import { getCurrentUser } from '../../lib/auth';
+
+const inputClass = 'w-full h-10 px-3 border border-[rgba(37,27,23,0.12)] rounded-lg text-sm focus:outline-none focus:border-[#C7A15D]';
+const labelClass = 'block text-[11px] uppercase tracking-wider font-semibold text-[#756B65] mb-1';
 
 export default function StaffManager() {
-  const [professionals, setProfessionals] = useState(() => getProfessionals());
-  const [accounts] = useState(() => listAccounts());
+  useDataVersion();
+  const professionals = getProfessionals();
+  const staff = listStaff();
+  const me = getCurrentUser();
+
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editData, setEditData] = useState<Partial<Professional>>({});
-  const [showNewAccount, setShowNewAccount] = useState(false);
-  const [newEmail, setNewEmail] = useState('');
-  const [newPassword, setNewPassword] = useState('');
-  const [newProId, setNewProId] = useState('');
-  const [createError, setCreateError] = useState('');
+  const [editError, setEditError] = useState('');
   const [saved, setSaved] = useState('');
 
-  const refresh = () => setProfessionals(getProfessionals());
+  const [showNewAccount, setShowNewAccount] = useState(false);
+  const [newRole, setNewRole] = useState<UserRole>('collaborator');
+  const [newProId, setNewProId] = useState('');
+  const [newName, setNewName] = useState('');
+  const [newEmail, setNewEmail] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [createError, setCreateError] = useState('');
+  const [creating, setCreating] = useState(false);
+  const [createdMsg, setCreatedMsg] = useState('');
+
+  const [resetFor, setResetFor] = useState<StaffMember | null>(null);
+  const [actionError, setActionError] = useState('');
+
+  const admins = staff.filter(s => s.role === 'admin');
 
   const startEdit = (pro: Professional) => {
     setEditingId(pro.id);
     setEditData({ ...pro });
+    setEditError('');
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!editingId) return;
-    updateProfessional(editingId, editData);
-    refresh();
-    setEditingId(null);
+    const result = await updateProfessional(editingId, {
+      whatsapp: editData.whatsapp ?? '',
+      photoUrl: editData.photoUrl ?? '',
+      bio: editData.bio ?? '',
+      commissionRate: editData.commissionRate
+    });
+    if (result.error) {
+      setEditError(result.error);
+      return;
+    }
     setSaved(editingId);
+    setEditingId(null);
     setTimeout(() => setSaved(''), 2000);
   };
 
-  const handleCreateAccount = () => {
+  const handleCreateAccount = async () => {
     setCreateError('');
-    if (!newEmail || !newPassword || !newProId) {
-      setCreateError('Preencha e-mail, senha e profissional.'); return;
-    }
+    setCreatedMsg('');
     const pro = professionals.find(p => p.id === newProId);
-    const result = createAccount({
-      email: newEmail,
-      name: pro?.name ?? 'Colaboradora',
-      role: 'collaborator',
-      professionalId: newProId,
-      password: newPassword,
+    const name = newRole === 'admin' ? newName.trim() : (pro?.name ?? '');
+    if (!newEmail.trim() || !newPassword) { setCreateError('Preencha e-mail e senha inicial.'); return; }
+    if (newRole === 'collaborator' && !newProId) { setCreateError('Escolha a profissional.'); return; }
+    if (newRole === 'admin' && name.length < 2) { setCreateError('Informe o nome da administradora.'); return; }
+    if (newPassword.length < 8) { setCreateError('A senha inicial precisa ter pelo menos 8 caracteres.'); return; }
+
+    setCreating(true);
+    const result = await createStaffAccount({
+      email: newEmail.trim(),
+      name,
+      role: newRole,
+      professionalId: newRole === 'collaborator' ? newProId : undefined,
+      password: newPassword
     });
+    setCreating(false);
     if (result.error) {
       setCreateError(result.error);
-    } else {
-      setShowNewAccount(false);
-      setNewEmail(''); setNewPassword(''); setNewProId('');
+      return;
     }
+    setCreatedMsg(`Acesso criado para ${name}. Passe o e-mail e a senha inicial pessoalmente; no primeiro acesso, ela pode trocar a senha no menu "Trocar minha senha".`);
+    setShowNewAccount(false);
+    setNewEmail(''); setNewPassword(''); setNewProId(''); setNewName(''); setNewRole('collaborator');
   };
 
-  const handleToggleAccount = (id: string) => {
-    toggleAccountActive(id);
+  const handleToggle = async (member: StaffMember) => {
+    setActionError('');
+    const result = await setStaffActive(member.userId, !member.active);
+    if (result.error) setActionError(result.error);
   };
+
+  const accountRow = (member: StaffMember) => (
+    <div className="flex flex-wrap items-center justify-between gap-2">
+      <div className="text-xs text-[#7C736D]">
+        Acesso: <strong>{member.email}</strong>
+        {member.role === 'admin' && <span className="ml-1 text-[#70542D] font-semibold">(administradora)</span>}
+      </div>
+      <div className="flex items-center gap-2">
+        <button
+          onClick={() => { setResetFor(member); setActionError(''); }}
+          className="flex items-center gap-1 text-[11px] px-2 py-1 rounded font-semibold text-[#70542D] bg-[#F8F1E4] hover:bg-[#F1E6D0] transition-colors"
+        >
+          <KeyRound size={11} /> Nova senha
+        </button>
+        <button
+          onClick={() => handleToggle(member)}
+          disabled={member.userId === me?.id}
+          title={member.userId === me?.id ? 'Você não pode desativar o seu próprio acesso' : undefined}
+          className={`flex items-center gap-1 text-[11px] px-2 py-1 rounded font-semibold transition-colors disabled:opacity-50 ${
+            member.active ? 'text-emerald-700 bg-emerald-50 hover:bg-emerald-100' : 'text-red-700 bg-red-50 hover:bg-red-100'
+          }`}
+        >
+          {member.active ? <><UserCheck size={11} /> Ativo</> : <><UserX size={11} /> Inativo</>}
+        </button>
+      </div>
+    </div>
+  );
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-3">
         <h3 className="font-semibold text-[#29231F]">Equipe &amp; Acessos</h3>
         <button
-          onClick={() => setShowNewAccount(!showNewAccount)}
+          onClick={() => { setShowNewAccount(!showNewAccount); setCreateError(''); }}
           className="flex items-center gap-2 px-4 py-2 bg-[#251B17] text-white rounded-lg text-sm font-semibold hover:bg-[#1a120e] transition-colors"
         >
           <Plus size={15} /> Nova conta de acesso
         </button>
       </div>
 
-      {/* New account form */}
+      {createdMsg && (
+        <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-lg text-sm text-emerald-800" role="status">{createdMsg}</div>
+      )}
+      {actionError && (
+        <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700" role="alert">{actionError}</div>
+      )}
+
+      {/* Nova conta */}
       <AnimatePresence>
         {showNewAccount && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            exit={{ opacity: 0, height: 0 }}
-            className="overflow-hidden"
-          >
+          <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
             <div className="bg-white rounded-xl border border-[rgba(37,27,23,0.09)] p-5 space-y-4">
-              <h4 className="font-semibold text-sm text-[#29231F]">Criar acesso de colaboradora</h4>
+              <h4 className="font-semibold text-sm text-[#29231F]">Criar acesso ao painel</h4>
               <div className="grid sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-[11px] uppercase tracking-wider font-semibold text-[#756B65] mb-1">Profissional</label>
-                  <select value={newProId} onChange={e => setNewProId(e.target.value)} className="w-full h-10 px-3 border border-[rgba(37,27,23,0.12)] rounded-lg text-sm focus:outline-none focus:border-[#C7A15D]">
-                    <option value="">Selecione</option>
-                    {professionals.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                  <label className={labelClass}>Tipo de acesso</label>
+                  <select value={newRole} onChange={e => setNewRole(e.target.value as UserRole)} className={inputClass}>
+                    <option value="collaborator">Colaboradora (vê só a própria agenda)</option>
+                    <option value="admin">Administradora (vê tudo)</option>
                   </select>
                 </div>
+                {newRole === 'collaborator' ? (
+                  <div>
+                    <label className={labelClass}>Profissional</label>
+                    <select value={newProId} onChange={e => setNewProId(e.target.value)} className={inputClass}>
+                      <option value="">Selecione</option>
+                      {professionals
+                        .filter(p => !staff.some(s => s.professionalId === p.id))
+                        .map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                    </select>
+                  </div>
+                ) : (
+                  <div>
+                    <label className={labelClass}>Nome</label>
+                    <input type="text" value={newName} onChange={e => setNewName(e.target.value)} className={inputClass} />
+                  </div>
+                )}
                 <div>
-                  <label className="block text-[11px] uppercase tracking-wider font-semibold text-[#756B65] mb-1">E-mail de acesso</label>
-                  <input type="email" value={newEmail} onChange={e => setNewEmail(e.target.value)} placeholder="nome@cuidare.com.br" className="w-full h-10 px-3 border border-[rgba(37,27,23,0.12)] rounded-lg text-sm focus:outline-none focus:border-[#C7A15D]" />
+                  <label className={labelClass}>E-mail de acesso</label>
+                  <input type="email" value={newEmail} onChange={e => setNewEmail(e.target.value)} placeholder="email@exemplo.com" autoComplete="off" className={inputClass} />
                 </div>
                 <div>
-                  <label className="block text-[11px] uppercase tracking-wider font-semibold text-[#756B65] mb-1">Senha inicial</label>
-                  <input type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} placeholder="Mínimo 6 caracteres" className="w-full h-10 px-3 border border-[rgba(37,27,23,0.12)] rounded-lg text-sm focus:outline-none focus:border-[#C7A15D]" />
+                  <label className={labelClass}>Senha inicial</label>
+                  <input type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} placeholder="Mínimo 8 caracteres" autoComplete="new-password" className={inputClass} />
                 </div>
               </div>
               {createError && <p className="text-xs text-red-600">{createError}</p>}
               <div className="flex gap-2">
                 <button onClick={() => setShowNewAccount(false)} className="flex-1 h-10 border border-gray-200 rounded-lg text-sm hover:bg-gray-50">Cancelar</button>
-                <button onClick={handleCreateAccount} className="flex-1 h-10 bg-[#251B17] text-white rounded-lg text-sm font-semibold hover:bg-[#1a120e]">Criar acesso</button>
+                <button onClick={handleCreateAccount} disabled={creating} className="flex-1 h-10 bg-[#251B17] text-white rounded-lg text-sm font-semibold hover:bg-[#1a120e] disabled:opacity-60">
+                  {creating ? 'Criando...' : 'Criar acesso'}
+                </button>
               </div>
             </div>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* Professionals list */}
+      {/* Administradoras */}
+      {admins.length > 0 && (
+        <div className="bg-white rounded-xl border border-[rgba(37,27,23,0.09)] shadow-sm p-4 space-y-3">
+          <h4 className="text-xs font-semibold uppercase tracking-wider text-[#7C736D] flex items-center gap-1.5">
+            <ShieldCheck size={13} className="text-[#C7A15D]" /> Administração
+          </h4>
+          {admins.map(a => (
+            <div key={a.userId} className="space-y-1">
+              <div className="text-sm font-semibold text-[#29231F]">{a.name}</div>
+              {accountRow(a)}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Profissionais */}
       <div className="space-y-4">
         {professionals.map(pro => {
-          const account = accounts.find(a => a.professionalId === pro.id);
+          const account = staff.find(s => s.professionalId === pro.id);
           const isEditing = editingId === pro.id;
           const wasSaved = saved === pro.id;
 
           return (
             <div key={pro.id} className="bg-white rounded-xl border border-[rgba(37,27,23,0.09)] shadow-sm overflow-hidden">
-              {/* Pro header */}
               <div className="p-4 flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   {pro.photoUrl ? (
@@ -147,66 +244,42 @@ export default function StaffManager() {
                 <div className="flex items-center gap-2">
                   {wasSaved && <Check size={14} className="text-emerald-600" />}
                   <button
-                    onClick={() => isEditing ? setEditingId(null) : startEdit(pro)}
+                    onClick={() => (isEditing ? setEditingId(null) : startEdit(pro))}
                     className="p-1.5 hover:bg-gray-100 rounded-md transition-colors"
+                    aria-label={isEditing ? 'Fechar edição' : `Editar ${pro.name}`}
                   >
                     {isEditing ? <X size={15} /> : <Edit2 size={15} className="text-[#7C736D]" />}
                   </button>
                 </div>
               </div>
 
-              {/* Edit form */}
               <AnimatePresence>
                 {isEditing && (
-                  <motion.div
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: 'auto' }}
-                    exit={{ opacity: 0, height: 0 }}
-                    className="border-t border-[rgba(37,27,23,0.06)] overflow-hidden"
-                  >
+                  <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="border-t border-[rgba(37,27,23,0.06)] overflow-hidden">
                     <div className="p-4 space-y-3">
                       <div>
-                        <label className="block text-[11px] uppercase tracking-wider font-semibold text-[#756B65] mb-1 flex items-center gap-1">
-                          <Phone size={11} /> WhatsApp (E.164: 5538...)
-                        </label>
-                        <input
-                          type="text"
-                          value={editData.whatsapp ?? ''}
-                          onChange={e => setEditData(d => ({ ...d, whatsapp: e.target.value }))}
-                          placeholder="5538XXXXXXXXX"
-                          className="w-full h-9 px-3 border border-[rgba(37,27,23,0.12)] rounded-lg text-sm focus:outline-none focus:border-[#C7A15D]"
-                        />
+                        <label className={`${labelClass} flex items-center gap-1`}><Phone size={11} /> WhatsApp (com DDD)</label>
+                        <input type="text" value={editData.whatsapp ?? ''} onChange={e => setEditData(d => ({ ...d, whatsapp: e.target.value }))} placeholder="(38) 99999-9999" className={inputClass} />
                       </div>
                       <div>
-                        <label className="block text-[11px] uppercase tracking-wider font-semibold text-[#756B65] mb-1">URL da Fotografia (opcional)</label>
-                        <input
-                          type="text"
-                          value={editData.photoUrl ?? ''}
-                          onChange={e => setEditData(d => ({ ...d, photoUrl: e.target.value || undefined }))}
-                          placeholder="https://... (deixe em branco para manter o monograma)"
-                          className="w-full h-9 px-3 border border-[rgba(37,27,23,0.12)] rounded-lg text-sm focus:outline-none focus:border-[#C7A15D]"
-                        />
+                        <label className={labelClass}>Endereço da fotografia (opcional)</label>
+                        <input type="text" value={editData.photoUrl ?? ''} onChange={e => setEditData(d => ({ ...d, photoUrl: e.target.value }))} placeholder="/team/nome.webp ou https://..." className={inputClass} />
                       </div>
                       <div>
-                        <label className="block text-[11px] uppercase tracking-wider font-semibold text-[#756B65] mb-1">Bio</label>
-                        <textarea
-                          rows={2}
-                          value={editData.bio ?? ''}
-                          onChange={e => setEditData(d => ({ ...d, bio: e.target.value }))}
-                          className="w-full p-2 border border-[rgba(37,27,23,0.12)] rounded-lg text-sm focus:outline-none focus:border-[#C7A15D] resize-none"
-                        />
+                        <label className={labelClass}>Bio</label>
+                        <textarea rows={2} value={editData.bio ?? ''} onChange={e => setEditData(d => ({ ...d, bio: e.target.value }))} className="w-full p-2 border border-[rgba(37,27,23,0.12)] rounded-lg text-sm focus:outline-none focus:border-[#C7A15D] resize-none" />
                       </div>
                       <div>
-                        <label className="block text-[11px] uppercase tracking-wider font-semibold text-[#756B65] mb-1">Taxa de Comissão (%)</label>
+                        <label className={labelClass}>Taxa de comissão (%)</label>
                         <input
-                          type="number"
-                          min={0}
-                          max={100}
+                          type="number" min={0} max={100}
                           value={Math.round((editData.commissionRate ?? 0.5) * 100)}
-                          onChange={e => setEditData(d => ({ ...d, commissionRate: parseInt(e.target.value) / 100 }))}
+                          onChange={e => setEditData(d => ({ ...d, commissionRate: (parseInt(e.target.value) || 0) / 100 }))}
                           className="w-32 h-9 px-3 border border-[rgba(37,27,23,0.12)] rounded-lg text-sm focus:outline-none focus:border-[#C7A15D]"
                         />
+                        <p className="text-[11px] text-[#7C736D] mt-1">Vale para novos agendamentos. Atendimentos antigos mantêm a taxa da época.</p>
                       </div>
+                      {editError && <p className="text-xs text-red-600">{editError}</p>}
                       <div className="flex gap-2">
                         <button onClick={() => setEditingId(null)} className="flex-1 h-9 border border-gray-200 rounded-lg text-sm hover:bg-gray-50">Cancelar</button>
                         <button onClick={handleSave} className="flex-1 h-9 bg-[#251B17] text-white rounded-lg text-sm font-semibold hover:bg-[#1a120e]">Salvar</button>
@@ -216,31 +289,64 @@ export default function StaffManager() {
                 )}
               </AnimatePresence>
 
-              {/* Account status */}
-              <div className="px-4 pb-3 flex items-center justify-between">
-                <div className="text-xs text-[#7C736D]">
-                  {account
-                    ? <span>Acesso: <strong>{account.email}</strong></span>
-                    : <span className="text-amber-600 font-semibold">⚠ Sem acesso configurado</span>
-                  }
-                </div>
-                {account && (
-                  <button
-                    onClick={() => handleToggleAccount(account.id)}
-                    className={`flex items-center gap-1 text-[11px] px-2 py-1 rounded font-semibold transition-colors ${
-                      account.active
-                        ? 'text-emerald-700 bg-emerald-50 hover:bg-emerald-100'
-                        : 'text-red-700 bg-red-50 hover:bg-red-100'
-                    }`}
-                  >
-                    {account.active ? <><UserCheck size={11} /> Ativo</> : <><UserX size={11} /> Inativo</>}
-                  </button>
+              <div className="px-4 pb-3">
+                {account ? accountRow(account) : (
+                  <span className="text-xs text-amber-600 font-semibold">⚠ Sem acesso ao painel</span>
                 )}
               </div>
             </div>
           );
         })}
       </div>
+
+      {resetFor && <ResetPasswordModal member={resetFor} onClose={() => setResetFor(null)} />}
+    </div>
+  );
+}
+
+function ResetPasswordModal({ member, onClose }: { member: StaffMember; onClose: () => void }) {
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [done, setDone] = useState(false);
+
+  const handleSave = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    if (password.length < 8) { setError('A senha precisa ter pelo menos 8 caracteres.'); return; }
+    setSaving(true);
+    const result = await resetStaffPassword(member.userId, password);
+    setSaving(false);
+    if (result.error) setError(result.error);
+    else setDone(true);
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="reset-password-title">
+      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
+      <form onSubmit={handleSave} className="relative bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 space-y-4">
+        <h3 id="reset-password-title" className="font-semibold text-[#29231F]">Nova senha para {member.name}</h3>
+        {done ? (
+          <>
+            <p className="text-sm text-emerald-700">Senha definida. Passe a nova senha pessoalmente para {member.name}.</p>
+            <button type="button" onClick={onClose} className="w-full h-10 bg-[#251B17] text-white rounded-lg text-sm font-semibold">Fechar</button>
+          </>
+        ) : (
+          <>
+            <div>
+              <label className={labelClass}>Nova senha</label>
+              <input type="password" value={password} onChange={e => setPassword(e.target.value)} autoComplete="new-password" placeholder="Mínimo 8 caracteres" className={inputClass} />
+            </div>
+            {error && <p className="text-xs text-red-600">{error}</p>}
+            <div className="flex gap-2">
+              <button type="button" onClick={onClose} className="flex-1 h-10 border border-gray-200 rounded-lg text-sm hover:bg-gray-50">Cancelar</button>
+              <button type="submit" disabled={saving} className="flex-1 h-10 bg-[#251B17] text-white rounded-lg text-sm font-semibold disabled:opacity-60">
+                {saving ? 'Salvando...' : 'Definir senha'}
+              </button>
+            </div>
+          </>
+        )}
+      </form>
     </div>
   );
 }

@@ -36,8 +36,8 @@ Crie o arquivo `.env` na raiz do projeto baseado nas variáveis abaixo:
 # URL do projeto no Supabase
 VITE_SUPABASE_URL=https://seu-projeto.supabase.co
 
-# Chave Anônima Pública (Anon Key)
-VITE_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+# Chave pública (publishable key)
+VITE_SUPABASE_PUBLISHABLE_KEY=sb_publishable_...
 ```
 
 > **Atenção de Segurança:** Nunca inclua a `SUPABASE_SERVICE_ROLE_KEY` no código do frontend. A chave service role deve ficar restrita a scripts de servidor ou Supabase Edge Functions.
@@ -46,48 +46,66 @@ VITE_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 
 ## 3. Aplicação das Migrações no Supabase
 
-As migrações SQL estão organizadas e versionadas no diretório `supabase/migrations/`:
+As migrações ficam em `supabase/migrations/` e devem ser aplicadas nesta ordem:
 
-1. `supabase/migrations/20260925000001_initial_schema.sql` (Tabelas, enums e chaves primárias)
-2. `supabase/migrations/20260925000002_concurrency_and_constraints.sql` (Trava transacional e função atômica `create_booking_atomic`)
-3. `supabase/migrations/20260925000003_rls_policies.sql` (Políticas de segurança RLS para isolamento de dados)
+1. `20261105000001_esquema.sql`: tabelas, com a trava que impede dois agendamentos no mesmo horário para a mesma profissional.
+2. `20261105000002_regras_agendamento.sql`: funções que o site chama (`get_available_slots` e `create_public_booking`), além das automações de comissão, histórico, mensagens de WhatsApp e registro de alterações.
+3. `20261105000003_seguranca_rls.sql`: permissões de acesso para visitante, colaboradora e administradora.
+4. `20261105000004_dados_iniciais.sql`: categorias, equipe, serviços e horário do salão. Este arquivo é **gerado** a partir de `src/data` com `npm run db:seed`; não edite à mão.
+5. `20261109000005_indices_extras.sql`: índices sugeridos pela verificação de desempenho do Supabase.
+6. `20261109000006_nome_regra_cancelamento.sql`: nome claro para a regra "cancelamento exige motivo".
+
+> As migrações de 25/09/2026 foram substituídas por estas. Elas nunca chegaram a ser aplicadas e tinham erros: as permissões não funcionavam e faltavam as categorias `noivas` e `cursos`.
+
+### Testar antes de aplicar
+```bash
+npm run test:db
+```
+O comando roda as 4 migrações num Postgres temporário e confere 43 situações: horários, conflitos, permissões, comissão e histórico.
 
 ### Opção A: Via Supabase CLI (Recomendado)
 ```bash
+npx supabase login
+npx supabase init        # só na primeira vez (cria supabase/config.toml)
 npx supabase link --project-ref <id-do-seu-projeto>
 npx supabase db push
 ```
 
 ### Opção B: Via SQL Editor do Painel Supabase
-Abra o **SQL Editor** do Supabase e execute o conteúdo dos 3 arquivos na ordem cronológica informada acima.
+Abra o **SQL Editor** e execute o conteúdo dos 4 arquivos, um de cada vez, na ordem acima.
 
 ---
 
-## 4. Criação de Administradores e Colaboradoras no Supabase Auth
+## 4. Criação de Administradoras e Colaboradoras
 
-Para atribuir papéis (roles) de segurança e permitir login nos painéis `/admin` e `/colaboradora`:
+O papel de cada pessoa fica na tabela `staff_members`, e não no token de login. Assim, desativar alguém bloqueia o acesso na hora.
 
-### Criar Administradora (Lane Viana)
-1. No Supabase Dashboard, acesse **Authentication > Users > Add User**.
-2. E-mail: `lane@cuidare.com.br`
-3. Senha: Defina a senha inicial.
-4. Execute a SQL abaixo no **SQL Editor** para definir o papel de administradora:
+### Primeira administradora (feito uma única vez)
+1. No Supabase Dashboard, acesse **Authentication > Users > Add user > Create new user**, informe e-mail e senha e marque **Auto Confirm User**.
+2. No **SQL Editor**, ligue o usuário ao papel de administradora:
 
 ```sql
-UPDATE auth.users
-SET raw_app_meta_data = raw_app_meta_data || '{"role": "admin"}'::jsonb
-WHERE email = 'lane@cuidare.com.br';
+insert into public.staff_members (user_id, name, email, role)
+select id, 'Lane Viana', email, 'admin' from auth.users where email = 'EMAIL-DA-LANE';
 ```
 
-### Criar Colaboradora (Ex: Evelyn)
-1. Crie o usuário `evelyn@cuidare.com.br` em **Authentication > Users**.
-2. Vincule ao ID da profissional executando a SQL:
+### Demais pessoas (pelo próprio painel)
+Com a administradora logada, abra **Equipe > Nova conta de acesso**, escolha a profissional, o e-mail e a senha inicial. A conta é criada pela Edge Function `criar-acesso-equipe` (código em `supabase/functions/`), que roda no servidor com a chave secreta.
 
-```sql
-UPDATE auth.users
-SET raw_app_meta_data = raw_app_meta_data || '{"role": "collaborator", "professional_id": "evelyn"}'::jsonb
-WHERE email = 'evelyn@cuidare.com.br';
-```
+- **Esqueceu a senha:** em **Equipe**, use o botão **Nova senha** da pessoa.
+- **Trocar a própria senha:** menu lateral, **Trocar minha senha**.
+- **Desativar:** em **Equipe**, clique em **Ativo** para virar **Inativo**.
+
+### O que cada papel pode fazer
+| | Visitante do site | Colaboradora | Administradora |
+|---|---|---|---|
+| Ver serviços, equipe e horário do salão | ✅ | ✅ | ✅ |
+| Ver horários livres e agendar | ✅ (só pelas funções do banco) | ✅ | ✅ |
+| Ver agendamentos | ❌ | só os próprios | todos |
+| Ver clientes | ❌ | só as que atendeu | todas |
+| Folgas e horário próprio | ❌ | os próprios | de todas |
+| Preços, equipe, configurações | ❌ | ❌ | ✅ |
+| Registro de alterações | ❌ | ❌ | só leitura |
 
 ---
 
@@ -101,7 +119,7 @@ WHERE email = 'evelyn@cuidare.com.br';
    ```bash
    vercel --prod
    ```
-3. No painel da Vercel em **Settings > Environment Variables**, adicione `VITE_SUPABASE_URL` e `VITE_SUPABASE_ANON_KEY`.
+3. No painel da Vercel em **Settings > Environment Variables**, adicione `VITE_SUPABASE_URL` e `VITE_SUPABASE_PUBLISHABLE_KEY`.
 
 ---
 
@@ -122,4 +140,4 @@ npx supabase db reset
 
 ---
 
-*Manual de Ativação gerado em 25/09/2026.*
+*Manual de Ativação atualizado em 05/11/2026.*

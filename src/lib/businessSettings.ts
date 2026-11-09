@@ -1,29 +1,28 @@
 // ─────────────────────────────────────────────
-// CUIDARE — Business Settings
-// Configurações globais do negócio (armazenadas em localStorage)
+// CUIDARE — Configurações do salão
+// Os valores reais vêm do banco (tabelas business_settings e business_hours)
+// e ficam guardados aqui na memória. Enquanto não carregam, valem os padrões abaixo.
 // ─────────────────────────────────────────────
 
 import type { BusinessSettings } from '../types';
 
-const SETTINGS_KEY = 'cuidare_business_settings';
-
-const DEFAULT_SETTINGS: BusinessSettings = {
-  id: 'bs_1',
+export const DEFAULT_SETTINGS: BusinessSettings = {
+  id: '1',
   salonName: 'Cuidare Espaço de Beleza',
   address: 'Rua Paracatu, 15, Centro',
   city: 'Taiobeiras',
   state: 'MG',
-  instagramUrl: '', // a ser configurado pela administradora
+  instagramUrl: '',
   businessWhatsapp: '5538991007706',
   businessWhatsappMessage: 'Olá! Gostaria de solicitar informações sobre agendamento.',
   openingHours: [
-    { dayOfWeek: 0, open: '', close: '', closed: true }, // Sunday
-    { dayOfWeek: 1, open: '', close: '', closed: true }, // Monday
-    { dayOfWeek: 2, open: '08:00', close: '18:00', closed: false, breakStart: '11:30', breakEnd: '14:00' }, // Tue
-    { dayOfWeek: 3, open: '08:00', close: '18:00', closed: false, breakStart: '11:30', breakEnd: '14:00' }, // Wed
-    { dayOfWeek: 4, open: '08:00', close: '18:00', closed: false, breakStart: '11:30', breakEnd: '14:00' }, // Thu
-    { dayOfWeek: 5, open: '08:00', close: '18:00', closed: false, breakStart: '11:30', breakEnd: '14:00' }, // Fri
-    { dayOfWeek: 6, open: '08:00', close: '18:00', closed: false }, // Saturday
+    { dayOfWeek: 0, open: '', close: '', closed: true }, // Domingo
+    { dayOfWeek: 1, open: '', close: '', closed: true }, // Segunda
+    { dayOfWeek: 2, open: '08:00', close: '18:00', closed: false, breakStart: '11:30', breakEnd: '14:00' },
+    { dayOfWeek: 3, open: '08:00', close: '18:00', closed: false, breakStart: '11:30', breakEnd: '14:00' },
+    { dayOfWeek: 4, open: '08:00', close: '18:00', closed: false, breakStart: '11:30', breakEnd: '14:00' },
+    { dayOfWeek: 5, open: '08:00', close: '18:00', closed: false, breakStart: '11:30', breakEnd: '14:00' },
+    { dayOfWeek: 6, open: '08:00', close: '18:00', closed: false }, // Sábado
   ],
   commissionDefaultRate: 0.5,
   minLeadTimeMinutes: 30,
@@ -31,24 +30,15 @@ const DEFAULT_SETTINGS: BusinessSettings = {
   updatedAt: new Date().toISOString()
 };
 
+let current: BusinessSettings = DEFAULT_SETTINGS;
+
 export function getBusinessSettings(): BusinessSettings {
-  try {
-    const raw = localStorage.getItem(SETTINGS_KEY);
-    if (raw) return { ...DEFAULT_SETTINGS, ...JSON.parse(raw) };
-  } catch { /* use defaults */ }
-  return DEFAULT_SETTINGS;
+  return current;
 }
 
-export function updateBusinessSettings(updates: Partial<BusinessSettings>): BusinessSettings {
-  const current = getBusinessSettings();
-  const updated: BusinessSettings = {
-    ...current,
-    ...updates,
-    id: current.id,
-    updatedAt: new Date().toISOString()
-  };
-  localStorage.setItem(SETTINGS_KEY, JSON.stringify(updated));
-  return updated;
+/** Usado pelo dataService quando as configurações chegam do banco. */
+export function setBusinessSettingsCache(settings: BusinessSettings): void {
+  current = settings;
 }
 
 /** Normalize Brazilian phone to E.164 without duplicating country code 55 */

@@ -44,16 +44,8 @@ export function LoginPage({ role }: LoginPageProps) {
       return;
     }
 
-    if (isAdmin && user.role !== 'admin') {
-      setError('Este acesso é exclusivo para administradoras.');
-      return;
-    }
-    if (!isAdmin && user.role !== 'collaborator') {
-      setError('Este acesso é exclusivo para colaboradoras.');
-      return;
-    }
-
-    navigate(isAdmin ? '/admin' : '/colaboradora');
+    // Cada pessoa vai para o painel do seu papel, mesmo se entrou pela porta "errada"
+    navigate(user.role === 'admin' ? '/admin' : '/colaboradora', { replace: true });
   };
 
   return (
@@ -98,7 +90,7 @@ export function LoginPage({ role }: LoginPageProps) {
                 type="email"
                 value={email}
                 onChange={e => setEmail(e.target.value)}
-                placeholder={isAdmin ? 'lane@cuidare.com.br' : 'seunome@cuidare.com.br'}
+                placeholder="seu e-mail"
                 autoComplete="email"
                 className="w-full h-11 px-4 bg-[#F8F5F0] border border-[rgba(37,27,23,0.12)] rounded-lg text-sm text-[#251B17] placeholder-[#A09890] focus:outline-none focus:border-[#C7A15D] focus:bg-white transition-colors"
               />
@@ -156,15 +148,9 @@ export function LoginPage({ role }: LoginPageProps) {
             </button>
           </form>
 
-          {/* Demo hint */}
-          <div className="mt-6 p-3 bg-[#F8F5F0] rounded-lg border border-[rgba(37,27,23,0.08)]">
-            <p className="text-[11px] text-[#756B65] text-center">
-              {isAdmin
-                ? <><strong>Demo:</strong> lane@cuidare.com.br / cuidare2024admin</>
-                : <><strong>Demo:</strong> railma@cuidare.com.br / cuidare2024</>
-              }
-            </p>
-          </div>
+          <p className="mt-6 text-[11px] text-[#756B65] text-center">
+            Esqueceu a senha? Fale com a administração do salão para receber uma nova.
+          </p>
         </div>
 
         {/* Back */}

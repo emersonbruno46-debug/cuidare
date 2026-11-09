@@ -44,7 +44,7 @@ export default function NewAppointmentForm({ initialDate, currentUser, onClose, 
   const [duration, setDuration] = useState(30);
   const [price, setPrice] = useState('');
   const [notes, setNotes] = useState('');
-  const [origin, setOrigin] = useState<BookingOrigin>('manual_admin');
+  const [origin, setOrigin] = useState<BookingOrigin>(isAdmin ? 'manual_admin' : 'manual_colaboradora');
   const [status, setStatus] = useState<BookingStatus>('pendente');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -111,7 +111,7 @@ export default function NewAppointmentForm({ initialDate, currentUser, onClose, 
     if (!time) { setError('Selecione o horário.'); return; }
 
     setLoading(true);
-    const result = createBooking({
+    const result = await createBooking({
       serviceId,
       serviceName: selectedService?.name ?? serviceId,
       professionalId,
@@ -133,7 +133,7 @@ export default function NewAppointmentForm({ initialDate, currentUser, onClose, 
       setError(result.error);
     } else {
       setStep('success');
-      setTimeout(() => { onCreated(); onClose(); }, 1500);
+      setTimeout(() => { onCreated(); onClose(); }, 1200);
     }
   };
 
@@ -298,7 +298,7 @@ export default function NewAppointmentForm({ initialDate, currentUser, onClose, 
                 {/* Professional & Service */}
                 <div className="space-y-3">
                   <h4 className="text-xs font-semibold uppercase tracking-wider text-[#7C736D]">Profissional e Serviço</h4>
-                  
+
                   {/* Professional */}
                   <div>
                     <label className="block text-[11px] uppercase tracking-wider font-semibold text-[#756B65] mb-1">Profissional *</label>
@@ -313,7 +313,7 @@ export default function NewAppointmentForm({ initialDate, currentUser, onClose, 
                             const newPro = professionals.find(p => p.id === newProId);
                             const currentServ = services.find(s => s.id === serviceId);
                             if (currentServ && newPro) {
-                              const isEligible = currentServ.professionalIds 
+                              const isEligible = currentServ.professionalIds
                                 ? currentServ.professionalIds.includes(newProId)
                                 : newPro.categories.includes(currentServ.category);
                               if (!isEligible) setServiceId('');
