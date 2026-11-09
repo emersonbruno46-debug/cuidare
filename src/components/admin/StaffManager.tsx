@@ -3,7 +3,7 @@
 // Dados das profissionais e contas de acesso ao painel, gravados no Supabase.
 // ─────────────────────────────────────────────
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Plus, Edit2, X, Check, Phone, UserCheck, UserX, KeyRound, ShieldCheck, UserPlus, UserMinus, RotateCcw } from 'lucide-react';
 import type { Professional, UserRole, ServiceCategory } from '../../types';
@@ -101,6 +101,20 @@ export default function StaffManager() {
     setNewEmail(''); setNewPassword(''); setNewProId(''); setNewName(''); setNewRole('collaborator');
   };
 
+  // Abre o formulário de acesso já com a profissional escolhida e leva a tela até ele
+  const accountFormRef = useRef<HTMLDivElement>(null);
+  const openAccountFormFor = (professionalId: string) => {
+    setNewRole('collaborator');
+    setNewProId(professionalId);
+    setNewEmail('');
+    setNewPassword('');
+    setCreateError('');
+    setCreatedMsg('');
+    setShowNewPro(false);
+    setShowNewAccount(true);
+    setTimeout(() => accountFormRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
+  };
+
   const handleRestore = async (pro: Professional) => {
     setActionError('');
     setActionMsg('');
@@ -193,6 +207,7 @@ export default function StaffManager() {
       )}
 
       {/* Nova conta */}
+      <div ref={accountFormRef} className="scroll-mt-4" />
       <AnimatePresence>
         {showNewAccount && (
           <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
@@ -344,7 +359,15 @@ export default function StaffManager() {
 
               <div className="px-4 pb-3">
                 {account ? accountRow(account) : (
-                  <span className="text-xs text-amber-600 font-semibold">⚠ Sem acesso ao painel</span>
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <span className="text-xs text-amber-600 font-semibold">⚠ Sem acesso ao painel</span>
+                    <button
+                      onClick={() => openAccountFormFor(pro.id)}
+                      className="flex items-center gap-1 text-[11px] px-2.5 py-1 rounded font-semibold text-white bg-[#251B17] hover:bg-[#1a120e] transition-colors"
+                    >
+                      <KeyRound size={11} /> Criar acesso
+                    </button>
+                  </div>
                 )}
               </div>
             </div>
