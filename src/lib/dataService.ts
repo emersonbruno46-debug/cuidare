@@ -19,7 +19,7 @@ import type {
 import { professionals as staticProfessionals } from '../data/professionalsData';
 import { getCurrentUser } from './auth';
 import { getSupabase, isSupabaseConfigured, friendlyDbError } from './supabase';
-import { timeToMinutes, isProfessionalAvailableForWindow } from './availability';
+import { timeToMinutes, isProfessionalAvailableForWindow, getNowInSaoPaulo } from './availability';
 import {
   getBusinessSettings, setBusinessSettingsCache, normalizeBrazilianPhone, DEFAULT_SETTINGS
 } from './businessSettings';
@@ -393,6 +393,82 @@ export async function updateProfessional(id: string, updates: Partial<Profession
   cache.professionals = cache.professionals.map(p => (p.id === id ? toProfessional(data as Row) : p));
   changed();
   return {};
+}
+
+/** Transforma o nome em um código simples (ex.: "Ana Júlia" → "ana-julia"). */
+function slugify(name: string): string {
+  return name
+    .normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')
+    .slice(0, 40) || 'profissional';
+}
+
+export interface NewProfessionalInput {
+  name: string;
+  role: string;
+  categories: ServiceCategory[];
+  whatsapp?: string;
+  photoUrl?: string;
+  bio?: string;
+  commissionRate: number;
+}
+
+/** Adiciona uma profissional nova à equipe (aparece no site e no agendamento). */
+export async function createProfessional(input: NewProfessionalInput): Promise<{ error?: string; id?: string }> {
+  const name = input.name.trim();
+  if (name.length < 2) return { error: 'Informe o nome da profissional.' };
+  if (input.categories.length === 0) return { error: 'Marque pelo menos um tipo de serviço que ela faz.' };
+
+  const all = getProfessionals();
+  const base = slugify(name);
+  let id = base;
+  for (let n = 2; all.some(p => p.id === id); n++) id = `${base}-${n}`;
+
+  const { data, error } = await getSupabase().from('professionals').insert({
+    id,
+    name,
+    role: input.role.trim(),
+    categories: input.categories,
+    whatsapp: input.whatsapp ? normalizeBrazilianPhone(input.whatsapp) : null,
+    photo_url: input.photoUrl?.trim() || null,
+    bio: input.bio?.trim() ?? '',
+    commission_rate: Math.min(1, Math.max(0, input.commissionRate)),
+    sort_order: all.length + 1,
+    active: true
+  }).select().single();
+  if (error) return { error: friendlyDbError(error) };
+
+  cache.professionals = [...cache.professionals, toProfessional(data as Row)];
+  changed();
+  return { id };
+}
+
+/** Agendamentos futuros (não cancelados) de uma profissional. */
+export function getUpcomingBookingsCount(professionalId: string): number {
+  const { todayStr } = getNowInSaoPaulo();
+  return getBookings().filter(
+    b => b.professionalId === professionalId && b.date >= todayStr && b.status !== 'cancelado' && b.status !== 'faltou' && b.status !== 'concluido'
+  ).length;
+}
+
+/**
+ * Tira a profissional da equipe sem apagar o histórico:
+ * ela some do site e do agendamento, e o acesso dela ao painel é bloqueado.
+ */
+export async function removeProfessional(id: string): Promise<{ error?: string }> {
+  const result = await updateProfessional(id, { active: false });
+  if (result.error) return result;
+  const account = cache.staff.find(s => s.professionalId === id && s.active);
+  if (account) {
+    const blocked = await setStaffActive(account.userId, false);
+    if (blocked.error) return { error: `Ela saiu do site, mas o acesso ao painel não foi bloqueado: ${blocked.error}` };
+  }
+  return {};
+}
+
+/** Traz de volta uma profissional que tinha saído. O acesso ao painel é religado à parte. */
+export async function restoreProfessional(id: string): Promise<{ error?: string }> {
+  return updateProfessional(id, { active: true });
 }
 
 // ═════════════════════════════════════════════

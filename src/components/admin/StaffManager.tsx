@@ -5,10 +5,12 @@
 
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, Edit2, X, Check, Phone, UserCheck, UserX, KeyRound, ShieldCheck } from 'lucide-react';
-import type { Professional, UserRole } from '../../types';
+import { Plus, Edit2, X, Check, Phone, UserCheck, UserX, KeyRound, ShieldCheck, UserPlus, UserMinus, RotateCcw } from 'lucide-react';
+import type { Professional, UserRole, ServiceCategory } from '../../types';
+import { CATEGORIES } from '../../data/categoriesData';
 import {
   getProfessionals, updateProfessional, listStaff, setStaffActive, createStaffAccount, resetStaffPassword,
+  createProfessional, removeProfessional, restoreProfessional, getUpcomingBookingsCount,
   useDataVersion, type StaffMember
 } from '../../lib/dataService';
 import { getCurrentUser } from '../../lib/auth';
@@ -18,7 +20,9 @@ const labelClass = 'block text-[11px] uppercase tracking-wider font-semibold tex
 
 export default function StaffManager() {
   useDataVersion();
-  const professionals = getProfessionals();
+  const allProfessionals = getProfessionals();
+  const professionals = allProfessionals.filter(p => p.active !== false);
+  const formerProfessionals = allProfessionals.filter(p => p.active === false);
   const staff = listStaff();
   const me = getCurrentUser();
 
@@ -39,6 +43,10 @@ export default function StaffManager() {
 
   const [resetFor, setResetFor] = useState<StaffMember | null>(null);
   const [actionError, setActionError] = useState('');
+  const [actionMsg, setActionMsg] = useState('');
+
+  const [showNewPro, setShowNewPro] = useState(false);
+  const [removing, setRemoving] = useState<Professional | null>(null);
 
   const admins = staff.filter(s => s.role === 'admin');
 
@@ -93,6 +101,17 @@ export default function StaffManager() {
     setNewEmail(''); setNewPassword(''); setNewProId(''); setNewName(''); setNewRole('collaborator');
   };
 
+  const handleRestore = async (pro: Professional) => {
+    setActionError('');
+    setActionMsg('');
+    const result = await restoreProfessional(pro.id);
+    if (result.error) { setActionError(result.error); return; }
+    const account = staff.find(s => s.professionalId === pro.id);
+    setActionMsg(account
+      ? `${pro.name} voltou para a equipe e já aparece no site. O acesso dela ao painel continua bloqueado: se ela for usar, clique em "Inativo" no cadastro dela para religar.`
+      : `${pro.name} voltou para a equipe e já aparece no site.`);
+  };
+
   const handleToggle = async (member: StaffMember) => {
     setActionError('');
     const result = await setStaffActive(member.userId, !member.active);
@@ -128,15 +147,43 @@ export default function StaffManager() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <h3 className="font-semibold text-[#29231F]">Equipe &amp; Acessos</h3>
-        <button
-          onClick={() => { setShowNewAccount(!showNewAccount); setCreateError(''); }}
-          className="flex items-center gap-2 px-4 py-2 bg-[#251B17] text-white rounded-lg text-sm font-semibold hover:bg-[#1a120e] transition-colors"
-        >
-          <Plus size={15} /> Nova conta de acesso
-        </button>
+        <div className="flex flex-wrap gap-2">
+          <button
+            onClick={() => { setShowNewPro(!showNewPro); setShowNewAccount(false); }}
+            className="flex items-center gap-2 px-4 py-2 border border-[#251B17] text-[#251B17] rounded-lg text-sm font-semibold hover:bg-[#F8F1E4] transition-colors"
+          >
+            <UserPlus size={15} /> Adicionar profissional
+          </button>
+          <button
+            onClick={() => { setShowNewAccount(!showNewAccount); setShowNewPro(false); setCreateError(''); }}
+            className="flex items-center gap-2 px-4 py-2 bg-[#251B17] text-white rounded-lg text-sm font-semibold hover:bg-[#1a120e] transition-colors"
+          >
+            <Plus size={15} /> Nova conta de acesso
+          </button>
+        </div>
       </div>
+
+      {actionMsg && (
+        <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-lg text-sm text-emerald-800" role="status">{actionMsg}</div>
+      )}
+
+      {/* Nova profissional */}
+      <AnimatePresence>
+        {showNewPro && (
+          <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
+            <NewProfessionalForm
+              onCancel={() => setShowNewPro(false)}
+              onCreated={(name) => {
+                setShowNewPro(false);
+                setActionError('');
+                setActionMsg(`${name} entrou na equipe e já aparece no site e no agendamento. Para ela usar o painel, clique em "Nova conta de acesso".`);
+              }}
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {createdMsg && (
         <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-lg text-sm text-emerald-800" role="status">{createdMsg}</div>
@@ -244,6 +291,12 @@ export default function StaffManager() {
                 <div className="flex items-center gap-2">
                   {wasSaved && <Check size={14} className="text-emerald-600" />}
                   <button
+                    onClick={() => { setRemoving(pro); setActionError(''); setActionMsg(''); }}
+                    className="flex items-center gap-1 text-[11px] px-2 py-1 rounded font-semibold text-red-700 bg-red-50 hover:bg-red-100 transition-colors"
+                  >
+                    <UserMinus size={11} /> Remover da equipe
+                  </button>
+                  <button
                     onClick={() => (isEditing ? setEditingId(null) : startEdit(pro))}
                     className="p-1.5 hover:bg-gray-100 rounded-md transition-colors"
                     aria-label={isEditing ? 'Fechar edição' : `Editar ${pro.name}`}
@@ -299,7 +352,167 @@ export default function StaffManager() {
         })}
       </div>
 
+      {/* Quem saiu da equipe */}
+      {formerProfessionals.length > 0 && (
+        <div className="bg-[#FAF8F5] rounded-xl border border-[rgba(37,27,23,0.09)] p-4 space-y-3">
+          <h4 className="text-xs font-semibold uppercase tracking-wider text-[#7C736D]">Saíram da equipe</h4>
+          <p className="text-[11px] text-[#7C736D]">Não aparecem no site nem no agendamento. O histórico de atendimentos delas continua guardado.</p>
+          {formerProfessionals.map(pro => (
+            <div key={pro.id} className="flex flex-wrap items-center justify-between gap-2">
+              <span className="text-sm text-[#29231F]">{pro.name} <span className="text-xs text-[#7C736D]">{pro.role}</span></span>
+              <button
+                onClick={() => handleRestore(pro)}
+                className="flex items-center gap-1 text-[11px] px-2 py-1 rounded font-semibold text-[#70542D] bg-[#F8F1E4] hover:bg-[#F1E6D0] transition-colors"
+              >
+                <RotateCcw size={11} /> Readicionar
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
       {resetFor && <ResetPasswordModal member={resetFor} onClose={() => setResetFor(null)} />}
+      {removing && (
+        <RemoveProfessionalModal
+          pro={removing}
+          hasAccount={staff.some(s => s.professionalId === removing.id && s.active)}
+          onClose={() => setRemoving(null)}
+          onRemoved={() => {
+            setActionMsg(`${removing.name} saiu da equipe. Ela não aparece mais no site e o acesso dela ao painel foi bloqueado.`);
+            setRemoving(null);
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+function NewProfessionalForm({ onCancel, onCreated }: { onCancel: () => void; onCreated: (name: string) => void }) {
+  const [name, setName] = useState('');
+  const [role, setRole] = useState('');
+  const [categories, setCategories] = useState<ServiceCategory[]>([]);
+  const [whatsapp, setWhatsapp] = useState('');
+  const [photoUrl, setPhotoUrl] = useState('');
+  const [bio, setBio] = useState('');
+  const [commission, setCommission] = useState(50);
+  const [error, setError] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  const toggleCategory = (id: ServiceCategory) =>
+    setCategories(c => (c.includes(id) ? c.filter(x => x !== id) : [...c, id]));
+
+  const handleSave = async () => {
+    setError('');
+    setSaving(true);
+    const result = await createProfessional({ name, role, categories, whatsapp, photoUrl, bio, commissionRate: commission / 100 });
+    setSaving(false);
+    if (result.error) { setError(result.error); return; }
+    onCreated(name.trim());
+  };
+
+  return (
+    <div className="bg-white rounded-xl border border-[rgba(37,27,23,0.09)] p-5 space-y-4">
+      <h4 className="font-semibold text-sm text-[#29231F]">Adicionar profissional à equipe</h4>
+      <div className="grid sm:grid-cols-2 gap-4">
+        <div>
+          <label className={labelClass}>Nome</label>
+          <input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="Como aparece no site" className={inputClass} />
+        </div>
+        <div>
+          <label className={labelClass}>Função</label>
+          <input type="text" value={role} onChange={e => setRole(e.target.value)} placeholder="Ex.: Manicure e Pedicure" className={inputClass} />
+        </div>
+        <div>
+          <label className={`${labelClass} flex items-center gap-1`}><Phone size={11} /> WhatsApp (opcional)</label>
+          <input type="text" value={whatsapp} onChange={e => setWhatsapp(e.target.value)} placeholder="(38) 99999-9999" className={inputClass} />
+        </div>
+        <div>
+          <label className={labelClass}>Comissão (%)</label>
+          <input type="number" min={0} max={100} value={commission} onChange={e => setCommission(parseInt(e.target.value) || 0)} className={inputClass} />
+        </div>
+      </div>
+      <div>
+        <label className={labelClass}>Que tipos de serviço ela faz?</label>
+        <div className="flex flex-wrap gap-2">
+          {CATEGORIES.map(c => {
+            const on = categories.includes(c.id);
+            return (
+              <button
+                key={c.id}
+                type="button"
+                onClick={() => toggleCategory(c.id)}
+                aria-pressed={on}
+                className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${
+                  on ? 'bg-[#251B17] text-white border-[#251B17]' : 'bg-white text-[#29231F] border-[rgba(37,27,23,0.15)] hover:border-[#C7A15D]'
+                }`}
+              >
+                {on && <Check size={11} className="inline mr-1" />}{c.shortName}
+              </button>
+            );
+          })}
+        </div>
+        <p className="text-[11px] text-[#7C736D] mt-1">As clientes só conseguem agendar com ela os serviços desses tipos.</p>
+      </div>
+      <div>
+        <label className={labelClass}>Endereço da fotografia (opcional)</label>
+        <input type="text" value={photoUrl} onChange={e => setPhotoUrl(e.target.value)} placeholder="https://..." className={inputClass} />
+      </div>
+      <div>
+        <label className={labelClass}>Bio (opcional)</label>
+        <textarea rows={2} value={bio} onChange={e => setBio(e.target.value)} className="w-full p-2 border border-[rgba(37,27,23,0.12)] rounded-lg text-sm focus:outline-none focus:border-[#C7A15D] resize-none" />
+      </div>
+      {error && <p className="text-xs text-red-600" role="alert">{error}</p>}
+      <div className="flex gap-2">
+        <button onClick={onCancel} className="flex-1 h-10 border border-gray-200 rounded-lg text-sm hover:bg-gray-50">Cancelar</button>
+        <button onClick={handleSave} disabled={saving} className="flex-1 h-10 bg-[#251B17] text-white rounded-lg text-sm font-semibold hover:bg-[#1a120e] disabled:opacity-60">
+          {saving ? 'Salvando...' : 'Adicionar à equipe'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function RemoveProfessionalModal({ pro, hasAccount, onClose, onRemoved }: {
+  pro: Professional; hasAccount: boolean; onClose: () => void; onRemoved: () => void;
+}) {
+  const [error, setError] = useState('');
+  const [saving, setSaving] = useState(false);
+  const upcoming = getUpcomingBookingsCount(pro.id);
+
+  const handleRemove = async () => {
+    setError('');
+    setSaving(true);
+    const result = await removeProfessional(pro.id);
+    setSaving(false);
+    if (result.error) setError(result.error);
+    else onRemoved();
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="remove-pro-title">
+      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
+      <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 space-y-4">
+        <h3 id="remove-pro-title" className="font-semibold text-[#29231F]">Remover {pro.name} da equipe?</h3>
+        <ul className="text-sm text-[#5A514B] space-y-1.5 list-disc pl-5">
+          <li>Ela some do site e ninguém mais consegue agendar com ela.</li>
+          {hasAccount && <li>O acesso dela ao painel é bloqueado na hora.</li>}
+          <li>O histórico de atendimentos e comissões dela continua guardado.</li>
+          <li>Se ela voltar, é só clicar em "Readicionar".</li>
+        </ul>
+        {upcoming > 0 && (
+          <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-800">
+            Atenção: ela tem <strong>{upcoming} {upcoming === 1 ? 'agendamento marcado' : 'agendamentos marcados'}</strong> a partir de hoje.
+            Eles continuam na agenda: remarque para outra profissional ou cancele avisando a cliente.
+          </div>
+        )}
+        {error && <p className="text-xs text-red-600" role="alert">{error}</p>}
+        <div className="flex gap-2">
+          <button type="button" onClick={onClose} className="flex-1 h-10 border border-gray-200 rounded-lg text-sm hover:bg-gray-50">Cancelar</button>
+          <button type="button" onClick={handleRemove} disabled={saving} className="flex-1 h-10 bg-red-700 text-white rounded-lg text-sm font-semibold hover:bg-red-800 disabled:opacity-60">
+            {saving ? 'Removendo...' : 'Remover'}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

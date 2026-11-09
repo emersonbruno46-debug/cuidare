@@ -93,7 +93,8 @@ function AppRoutes() {
     setBookingOpen(true);
   };
 
-  const liveProfessionals = getProfessionals();
+  // No site só aparecem as profissionais que estão na equipe
+  const liveProfessionals = getProfessionals().filter(p => p.active !== false);
 
   return (
     <>
