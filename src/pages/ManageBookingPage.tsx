@@ -19,6 +19,12 @@ import { services as staticServices } from '../data/servicesData';
 type Mode = 'view' | 'reschedule' | 'cancel';
 const ANY = '__any__';
 
+// O que a cliente acabou de fazer (para montar os avisos às profissionais)
+type RescheduleInfo = { before: ManagedBooking; date: string; time: string; professionalId: string; professionalName: string };
+type LastAction =
+  | ({ kind: 'reschedule' } & RescheduleInfo)
+  | { kind: 'cancel'; before: ManagedBooking; reason: string };
+
 const STATUS_LABEL: Record<string, { text: string; className: string }> = {
   pendente: { text: 'Aguardando confirmação', className: 'bg-amber-50 text-amber-800 border-amber-200' },
   confirmado: { text: 'Confirmado', className: 'bg-emerald-50 text-emerald-800 border-emerald-200' },
@@ -38,6 +44,7 @@ export default function ManageBookingPage() {
   const [loadError, setLoadError] = useState('');
   const [mode, setMode] = useState<Mode>('view');
   const [notice, setNotice] = useState('');
+  const [lastAction, setLastAction] = useState<LastAction | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -95,14 +102,16 @@ export default function ManageBookingPage() {
               </div>
             )}
 
+            {lastAction && <NotifyProfessionals action={lastAction} />}
+
             <BookingCard booking={booking} />
 
             {mode === 'view' && (
               <ActionsPanel
                 booking={booking}
                 helpLink={helpLink}
-                onReschedule={() => { setNotice(''); setMode('reschedule'); }}
-                onCancel={() => { setNotice(''); setMode('cancel'); }}
+                onReschedule={() => { setNotice(''); setLastAction(null); setMode('reschedule'); }}
+                onCancel={() => { setNotice(''); setLastAction(null); setMode('cancel'); }}
               />
             )}
 
@@ -111,9 +120,11 @@ export default function ManageBookingPage() {
                 token={token}
                 booking={booking}
                 onBack={() => setMode('view')}
-                onDone={async () => {
+                onDone={async (info) => {
                   setMode('view');
                   setNotice('Pronto! Seu horário foi remarcado.');
+                  setLastAction({ kind: 'reschedule', ...info });
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
                   await load();
                 }}
               />
@@ -122,16 +133,95 @@ export default function ManageBookingPage() {
             {mode === 'cancel' && (
               <CancelPanel
                 token={token}
+                booking={booking}
                 onBack={() => setMode('view')}
-                onDone={async () => {
+                onDone={async (before, reason) => {
                   setMode('view');
                   setNotice('Seu agendamento foi cancelado e o horário ficou livre. Esperamos te ver em breve!');
+                  setLastAction({ kind: 'cancel', before, reason });
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
                   await load();
                 }}
               />
             )}
           </motion.div>
         )}
+      </div>
+    </div>
+  );
+}
+
+/** Botões de WhatsApp com a mensagem pronta para avisar as profissionais. */
+function NotifyProfessionals({ action }: { action: LastAction }) {
+  const pros = getProfessionals();
+  const phoneOf = (id: string) => pros.find(p => p.id === id)?.whatsapp;
+  const firstNameOf = (name: string) => name.split(' ')[0];
+  const when = (date: string, time: string) => `${capitalize(formatDateLabel(date, 'full'))}, às ${time}`;
+
+  const b = action.before;
+  const me = b.clientFirstName ? `Aqui é ${b.clientFirstName}.` : 'Sou cliente da Cuidare.';
+  const oldWhen = when(b.date, b.time);
+  const buttons: { key: string; label: string; href: string; primary: boolean }[] = [];
+
+  if (action.kind === 'reschedule') {
+    const newWhen = when(action.date, action.time);
+    if (action.professionalId !== b.professionalId) {
+      buttons.push({
+        key: 'nova',
+        primary: true,
+        label: `Avisar ${firstNameOf(action.professionalName)} (nova profissional)`,
+        href: buildWhatsAppLink(phoneOf(action.professionalId),
+          `Olá, ${firstNameOf(action.professionalName)}! ${me} Remarquei meu atendimento pelo site da Cuidare e agora ele é com você:\n\n` +
+          `*Serviço:* ${b.serviceName}\n*Data:* ${newWhen}\n\n(Antes estava com ${b.professionalName}: ${oldWhen}.)`)
+      });
+      buttons.push({
+        key: 'antiga',
+        primary: false,
+        label: `Avisar ${firstNameOf(b.professionalName)} (horário anterior)`,
+        href: buildWhatsAppLink(phoneOf(b.professionalId),
+          `Olá, ${firstNameOf(b.professionalName)}! ${me} Remarquei meu atendimento de ${b.serviceName} que era com você (${oldWhen}). ` +
+          `Ele passou para ${action.professionalName} (${newWhen}), então seu horário ficou livre. Obrigada!`)
+      });
+    } else {
+      buttons.push({
+        key: 'mesma',
+        primary: true,
+        label: `Avisar ${firstNameOf(b.professionalName)}`,
+        href: buildWhatsAppLink(phoneOf(b.professionalId),
+          `Olá, ${firstNameOf(b.professionalName)}! ${me} Remarquei meu atendimento de ${b.serviceName}:\n\n*Antes:* ${oldWhen}\n*Agora:* ${newWhen}`)
+      });
+    }
+  } else {
+    buttons.push({
+      key: 'cancel',
+      primary: true,
+      label: `Avisar ${firstNameOf(b.professionalName)}`,
+      href: buildWhatsAppLink(phoneOf(b.professionalId),
+        `Olá, ${firstNameOf(b.professionalName)}! ${me} Cancelei meu atendimento de ${b.serviceName} (${oldWhen}).` +
+        (action.reason ? `\n\n*Motivo:* ${action.reason}` : ''))
+    });
+  }
+
+  return (
+    <div className="bg-white rounded-2xl border border-[rgba(37,27,23,0.09)] shadow-sm p-5 space-y-3">
+      <p className="text-sm font-semibold text-[#29231F]">
+        {buttons.length > 1 ? 'Avise as profissionais pelo WhatsApp' : 'Avise a profissional pelo WhatsApp'}
+      </p>
+      <p className="text-xs text-[#5C534D]">A mensagem já vai pronta, é só tocar em enviar.</p>
+      <div className="flex flex-col gap-2">
+        {buttons.map(btn => (
+          <a
+            key={btn.key}
+            href={btn.href}
+            target="_blank"
+            rel="noreferrer"
+            className={`min-h-[44px] px-4 py-2 rounded-xl text-sm font-semibold flex items-center justify-center gap-2 text-center transition-colors ${btn.primary
+              ? 'bg-[#25D366] hover:bg-[#20ba5a] text-white'
+              : 'border border-[#25D366] text-[#1a8f47] hover:bg-[#25D366]/10'}`}
+          >
+            <Phone size={15} className="shrink-0" /> {btn.label}
+          </a>
+        ))}
       </div>
     </div>
   );
@@ -209,7 +299,7 @@ function ActionsPanel({ booking, helpLink, onReschedule, onCancel }: {
 }
 
 function ReschedulePanel({ token, booking, onBack, onDone }: {
-  token: string; booking: ManagedBooking; onBack: () => void; onDone: () => Promise<void>;
+  token: string; booking: ManagedBooking; onBack: () => void; onDone: (info: RescheduleInfo) => Promise<void>;
 }) {
   // Profissionais que fazem este serviço
   const professionals = getProfessionals().filter(p => p.active !== false);
@@ -268,7 +358,13 @@ function ReschedulePanel({ token, booking, onBack, onDone }: {
       setReload(n => n + 1);
       return;
     }
-    await onDone();
+    await onDone({
+      before: booking,
+      date,
+      time: picked.time,
+      professionalId: picked.professionalId,
+      professionalName: nameOf(picked.professionalId)
+    });
   };
 
   const chip = (active: boolean) =>
@@ -381,7 +477,9 @@ function ReschedulePanel({ token, booking, onBack, onDone }: {
   );
 }
 
-function CancelPanel({ token, onBack, onDone }: { token: string; onBack: () => void; onDone: () => Promise<void> }) {
+function CancelPanel({ token, booking, onBack, onDone }: {
+  token: string; booking: ManagedBooking; onBack: () => void; onDone: (before: ManagedBooking, reason: string) => Promise<void>;
+}) {
   const [reason, setReason] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -392,7 +490,7 @@ function CancelPanel({ token, onBack, onDone }: { token: string; onBack: () => v
     const result = await clientCancelBooking(token, reason);
     setSaving(false);
     if (result.error) { setError(result.error); return; }
-    await onDone();
+    await onDone(booking, reason.trim());
   };
 
   return (
