@@ -132,7 +132,8 @@ function toBooking(r: Row): Booking {
     createdAt: String(r.created_at),
     updatedAt: optStr(r.updated_at),
     rescheduleHistory: (r.reschedule_history as RescheduleEntry[]) ?? [],
-    cancelReason: optStr(r.cancel_reason)
+    cancelReason: optStr(r.cancel_reason),
+    manageToken: optStr(r.manage_token)
   };
 }
 
@@ -735,9 +736,104 @@ export async function createPublicBooking(data: {
       status: b.status as BookingStatus,
       price: num(b.price),
       origin: 'site',
-      createdAt: new Date().toISOString()
+      createdAt: new Date().toISOString(),
+      manageToken: optStr(b.manageToken)
     }
   };
+}
+
+// ═════════════════════════════════════════════
+// LINK PESSOAL DA CLIENTE (remarcar ou cancelar sozinha)
+// ═════════════════════════════════════════════
+
+/** Endereço do link pessoal de um agendamento. */
+export function buildManageUrl(token: string): string {
+  const origin = typeof window !== 'undefined' ? window.location.origin : 'https://cuidare-sigma.vercel.app';
+  return `${origin}/meu-agendamento/${token}`;
+}
+
+export interface ManagedBooking {
+  serviceId: string;
+  serviceName: string;
+  professionalId: string;
+  professionalName: string;
+  date: string;
+  time: string;
+  endTime: string;
+  duration: number;
+  status: BookingStatus;
+  price: number;
+  clientFirstName: string;
+  canCancel: boolean;
+  canReschedule: boolean;
+  blockReason?: string;
+  reschedulesLeft: number;
+  minHours: number;
+}
+
+type LinkResult = { success: boolean; error?: string; expired?: boolean; booking?: Row };
+
+/** Abre o agendamento pelo link. */
+export async function fetchManagedBooking(token: string): Promise<{ booking?: ManagedBooking; error?: string; expired?: boolean }> {
+  const { data, error } = await getSupabase().rpc('get_booking_by_token', { p_token: token });
+  if (error) return { error: 'Não foi possível abrir o agendamento. Verifique sua internet e tente de novo.' };
+  const r = data as LinkResult;
+  if (!r?.success || !r.booking) return { error: r?.error ?? 'Agendamento não encontrado.', expired: r?.expired };
+  const b = r.booking;
+  return {
+    booking: {
+      serviceId: String(b.serviceId),
+      serviceName: String(b.serviceName),
+      professionalId: String(b.professionalId),
+      professionalName: String(b.professionalName),
+      date: String(b.date),
+      time: String(b.time),
+      endTime: String(b.endTime),
+      duration: num(b.duration),
+      status: b.status as BookingStatus,
+      price: num(b.price),
+      clientFirstName: String(b.clientFirstName ?? ''),
+      canCancel: b.canCancel === true,
+      canReschedule: b.canReschedule === true,
+      blockReason: optStr(b.blockReason),
+      reschedulesLeft: num(b.reschedulesLeft),
+      minHours: num(b.minHours)
+    }
+  };
+}
+
+/** Horários livres para remarcar (o horário atual da cliente conta como livre). */
+export async function fetchRescheduleSlots(token: string, date: string, professionalId: string | null): Promise<PublicSlot[]> {
+  const { data, error } = await getSupabase().rpc('get_reschedule_slots', {
+    p_token: token,
+    p_date: date,
+    p_professional_id: professionalId
+  });
+  if (error) throw new Error(friendlyDbError(error));
+  return ((data as Row[]) ?? []).map(r => ({
+    time: hhmm(r.slot_time),
+    professionalIds: (r.professional_ids as string[]) ?? []
+  }));
+}
+
+export async function clientRescheduleBooking(
+  token: string, date: string, time: string, professionalId: string | null
+): Promise<{ error?: string }> {
+  const { data, error } = await getSupabase().rpc('client_reschedule_booking', {
+    p_token: token, p_date: date, p_time: time, p_professional_id: professionalId
+  });
+  if (error) return { error: friendlyDbError(error) };
+  const r = data as LinkResult;
+  return r?.success ? {} : { error: r?.error ?? 'Não foi possível remarcar.' };
+}
+
+export async function clientCancelBooking(token: string, reason: string): Promise<{ error?: string }> {
+  const { data, error } = await getSupabase().rpc('client_cancel_booking', {
+    p_token: token, p_reason: reason.trim() || null
+  });
+  if (error) return { error: friendlyDbError(error) };
+  const r = data as LinkResult;
+  return r?.success ? {} : { error: r?.error ?? 'Não foi possível cancelar.' };
 }
 
 // ═════════════════════════════════════════════

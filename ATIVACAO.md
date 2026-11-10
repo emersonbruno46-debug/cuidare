@@ -54,6 +54,8 @@ As migrações ficam em `supabase/migrations/` e devem ser aplicadas nesta ordem
 4. `20261105000004_dados_iniciais.sql`: categorias, equipe, serviços e horário do salão. Este arquivo é **gerado** a partir de `src/data` com `npm run db:seed`; não edite à mão.
 5. `20261109000005_indices_extras.sql`: índices sugeridos pela verificação de desempenho do Supabase.
 6. `20261109000006_nome_regra_cancelamento.sql`: nome claro para a regra "cancelamento exige motivo".
+7. `20261110000007_cliente_remarca_cancela.sql`: link pessoal (`/meu-agendamento/<chave>`) para a cliente remarcar ou cancelar sozinha. Regras em `business_settings`: até 12 horas antes (`client_change_min_hours`), no máximo 2 remarcações (`client_max_reschedules`). A profissional substituída e a substituta recebem aviso (`staff_alert`) na fila de WhatsApp.
+8. `20261110000008_avisos_equipe_nao_cancelam.sql`: avisos para a equipe nunca são descartados quando o agendamento muda de novo.
 
 > As migrações de 25/09/2026 foram substituídas por estas. Elas nunca chegaram a ser aplicadas e tinham erros: as permissões não funcionavam e faltavam as categorias `noivas` e `cursos`.
 
@@ -61,7 +63,7 @@ As migrações ficam em `supabase/migrations/` e devem ser aplicadas nesta ordem
 ```bash
 npm run test:db
 ```
-O comando roda as 4 migrações num Postgres temporário e confere 43 situações: horários, conflitos, permissões, comissão e histórico.
+O comando roda todas as migrações num Postgres temporário e confere 66 situações: horários, conflitos, permissões, comissão, histórico e o link pessoal da cliente.
 
 ### Opção A: Via Supabase CLI (Recomendado)
 ```bash

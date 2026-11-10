@@ -3,13 +3,13 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   X, User, MessageSquare, Check, Phone, Mail,
   ArrowLeft, ArrowRight, Search, Sparkles, MapPin,
-  AlertCircle, ShieldCheck, Clock, UserCheck
+  AlertCircle, ShieldCheck, Clock, UserCheck, Copy, Link2
 } from 'lucide-react';
 import { services } from '../data/servicesData';
 import { professionals as defaultProfessionals } from '../data/professionalsData';
 import { CATEGORIES } from '../data/categoriesData';
 import type { Service, Professional, Booking } from '../types';
-import { fetchAvailableSlots, createPublicBooking, type PublicSlot } from '../lib/dataService';
+import { fetchAvailableSlots, createPublicBooking, buildManageUrl, type PublicSlot } from '../lib/dataService';
 import { buildWhatsAppLink } from '../lib/businessSettings';
 import { getNextBusinessDays, formatDateLabel } from '../lib/dateUtils';
 import { serviceMatchesQuery } from '../lib/searchUtils';
@@ -324,7 +324,10 @@ export default function BookingModal({
 *Data:* ${formattedDate} (${formatDateLabel(bookingToUse.date, 'short')})
 *Horário:* ${bookingToUse.time}h
 
-Gostaria de enviar este comprovante para confirmação.`;
+Gostaria de enviar este comprovante para confirmação.` +
+      (savedBooking?.manageToken
+        ? `\n\nMeu link para remarcar ou cancelar: ${buildManageUrl(savedBooking.manageToken)}`
+        : '');
 
     const recipientPhone = pro.whatsapp || '5538991007706'; // fallback recepção Lara
     const whatsappUrl = buildWhatsAppLink(recipientPhone, message);
@@ -1166,9 +1169,14 @@ Gostaria de enviar este comprovante para confirmação.`;
                     </div>
                   </div>
 
+                  {savedBooking?.manageToken && (
+                    <ManageLinkBox url={buildManageUrl(savedBooking.manageToken)} />
+                  )}
+
                   <div className="space-y-3 pt-2">
                     <p className="text-xs text-[#5C534D] max-w-sm mx-auto leading-relaxed">
                       Clique no botão abaixo para enviar o comprovante com os detalhes para a profissional via WhatsApp.
+                      {savedBooking?.manageToken && ' O link para remarcar ou cancelar vai junto e fica salvo na sua conversa.'}
                     </p>
                     <div className="flex flex-col gap-2 max-w-xs mx-auto">
                       <a
@@ -1269,5 +1277,43 @@ Gostaria de enviar este comprovante para confirmação.`;
 
       <PrivacyPolicyModal isOpen={privacyOpen} onClose={() => setPrivacyOpen(false)} />
     </>
+  );
+}
+
+/** Caixa com o link pessoal para a cliente remarcar ou cancelar sozinha. */
+function ManageLinkBox({ url }: { url: string }) {
+  const [copied, setCopied] = useState(false);
+
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2500);
+    } catch {
+      window.prompt('Copie o seu link:', url);
+    }
+  };
+
+  return (
+    <div className="max-w-md mx-auto text-left p-4 rounded-2xl border border-[#E6D4B8] bg-[#FBF6EC] space-y-2">
+      <p className="text-xs font-semibold text-[#70542D] flex items-center gap-1.5">
+        <Link2 size={14} /> Precisa remarcar ou cancelar depois?
+      </p>
+      <p className="text-[11px] text-[#5C534D] leading-relaxed">
+        Use o seu link pessoal. Guarde-o e não compartilhe: quem tiver o link consegue mudar este agendamento.
+      </p>
+      <div className="flex gap-2">
+        <a href={url} target="_blank" rel="noreferrer" className="flex-1 min-w-0 h-10 px-3 rounded-lg bg-white border border-[#E6DFD5] text-[11px] text-[#29231F] flex items-center truncate hover:border-[#C7A15D]">
+          <span className="truncate">{url}</span>
+        </a>
+        <button
+          type="button"
+          onClick={copy}
+          className="shrink-0 h-10 px-3 rounded-lg bg-[#251B17] text-white text-[11px] font-semibold flex items-center gap-1.5 hover:bg-[#1a120e]"
+        >
+          {copied ? <><Check size={13} /> Copiado</> : <><Copy size={13} /> Copiar</>}
+        </button>
+      </div>
+    </div>
   );
 }

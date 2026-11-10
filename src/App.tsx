@@ -13,6 +13,7 @@ import { loadPublicData, getProfessionals, useDataVersion, clearLegacyLocalData 
 // Painel e login carregam só quando alguém abre essas páginas
 const AdminPanel = lazy(() => import('./components/AdminPanel'));
 const AccessPage = lazy(() => import('./pages/AccessPage'));
+const ManageBookingPage = lazy(() => import('./pages/ManageBookingPage'));
 const AdminLoginPage = lazy(() => import('./pages/LoginPages').then(m => ({ default: m.AdminLoginPage })));
 const CollaboratorLoginPage = lazy(() => import('./pages/LoginPages').then(m => ({ default: m.CollaboratorLoginPage })));
 
@@ -111,6 +112,9 @@ function AppRoutes() {
               />
             }
           />
+
+          {/* Link pessoal da cliente: remarcar ou cancelar */}
+          <Route path="/meu-agendamento/:token" element={<ManageBookingPage />} />
 
           {/* Acesso e login */}
           <Route path="/acesso" element={<AccessPage />} />
