@@ -10,9 +10,8 @@ import {
   Clock, Calendar, User, MessageSquare, AlertTriangle, RefreshCw, History
 } from 'lucide-react';
 import type { Booking, BookingStatus, AuthUser } from '../../types';
-import { updateBooking, deleteBooking, rescheduleBooking, getProfessionals, getBookings, buildManageUrl } from '../../lib/dataService';
+import { updateBooking, deleteBooking, rescheduleBooking, getProfessionals, getBookings, buildManageUrl, getServiceById } from '../../lib/dataService';
 import { buildWhatsAppLink } from '../../lib/businessSettings';
-import { services } from '../../data/servicesData';
 import { getAvailableSlots } from '../../lib/availability';
 
 interface AppointmentModalProps {
@@ -53,7 +52,7 @@ export default function AppointmentModal({ booking, onClose, onUpdated, currentU
   const isAdmin = currentUser.role === 'admin';
   const canEdit = isAdmin || currentUser.professionalId === booking.professionalId;
   const professionals = getProfessionals().filter(p => p.active !== false);
-  const serviceObj = services.find(s => s.id === booking.serviceId);
+  const serviceObj = getServiceById(booking.serviceId);
 
   // Filter eligible professionals for rescheduling
   const eligibleProfessionals = (serviceObj

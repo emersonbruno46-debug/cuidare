@@ -4,9 +4,9 @@
 // Sem dependência de IA externa — parser puro em português
 // ─────────────────────────────────────────────
 
-import type { ParsedBookingMessage } from '../types';
+import type { ParsedBookingMessage, Service } from '../types';
 import { professionals } from '../data/professionalsData';
-import { services } from '../data/servicesData';
+import { getServices } from './dataService';
 
 // ── Month map
 const MONTHS: Record<string, number> = {
@@ -131,7 +131,8 @@ function findService(text: string): { serviceId: string; serviceName: string; ra
   const norm = normalizeText(text);
   
   // Try exact matches first, then partial
-  let bestMatch: typeof services[0] | null = null;
+  const services = getServices();
+  let bestMatch: Service | null = null;
   let bestScore = 0;
 
   for (const svc of services) {

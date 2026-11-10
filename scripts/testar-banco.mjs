@@ -229,6 +229,34 @@ await as('authenticated', ADMIN);
 await q(`update bookings set manage_token = 'trocada' where id = $1`, [evaId]);
 ok((await q(`select manage_token from bookings where id = $1`, [evaId]))[0].manage_token === tok, 'a chave do link nunca muda');
 
+console.log('\n[Serviços e preços pelo painel]');
+await as('authenticated', ADMIN);
+await q(`update services set price_base = 99.5, professional_ids = '{maisa}' where id = 'corte'`);
+await q(`insert into services (id, name, category, price_base, duration, description, sort_order)
+         values ('servico-novo', 'Serviço Novo', 'unhas', 42, 30, 'Teste', 100)`);
+await as('anon');
+ok((await q(`select id from services where id = 'servico-novo'`)).length === 1, 'serviço criado pela admin aparece para o site');
+const corteSlots = await q(`select professional_ids from get_available_slots('corte', $1)`, [tue]);
+ok(corteSlots.length > 0 && corteSlots.every(s => s.professional_ids.length === 1 && s.professional_ids[0] === 'maisa'),
+  'serviço restrito à Maísa só oferece horários dela', JSON.stringify(corteSlots[0]));
+r = await book({ service: 'corte', time: '16:30', name: 'Preço Novo', phone: '38955550000' });
+ok(r.success && r.booking.professionalId === 'maisa' && Number(r.booking.price) === 99.5, 'agendamento novo usa o preço atualizado', JSON.stringify(r));
+r = await book({ service: 'corte', pro: 'railma', time: '17:00', name: 'Preço Novo', phone: '38955550001' });
+ok(!r.success, 'profissional fora da lista do serviço é recusada');
+
+await as('authenticated', ADMIN);
+await q(`update services set active = false where id = 'servico-novo'`);
+await as('anon');
+ok((await q(`select id from services where id = 'servico-novo'`)).length === 0, 'serviço tirado do site some para o visitante');
+r = await book({ service: 'servico-novo', name: 'Fora', phone: '38955550002' });
+ok(!r.success, 'serviço tirado do site não pode ser agendado');
+
+await as('authenticated', RAILMA);
+const colabUpd = await q(`update services set price_base = 1 where id = 'corte' returning id`).catch(() => []);
+ok(colabUpd.length === 0, 'colaboradora NÃO altera preços');
+await expectError(`insert into services (id, name, category, price_base, duration) values ('hack', 'Hack', 'unhas', 1, 30)`, [], 'colaboradora NÃO cria serviços');
+await as('authenticated', ADMIN);
+
 console.log('\n[Equipe desativada]');
 await as('authenticated', ADMIN);
 await q(`update staff_members set active = false where user_id = $1`, [RAILMA]);

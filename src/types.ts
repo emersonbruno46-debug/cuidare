@@ -52,6 +52,8 @@ export interface Service {
   note?: string;
   flowType?: ServiceFlowType;
   flowBadge?: string;
+  active?: boolean;    // false = não aparece no site nem no agendamento
+  sortOrder?: number;
 }
 
 export interface Professional {

@@ -51,7 +51,7 @@ As migrações ficam em `supabase/migrations/` e devem ser aplicadas nesta ordem
 1. `20261105000001_esquema.sql`: tabelas, com a trava que impede dois agendamentos no mesmo horário para a mesma profissional.
 2. `20261105000002_regras_agendamento.sql`: funções que o site chama (`get_available_slots` e `create_public_booking`), além das automações de comissão, histórico, mensagens de WhatsApp e registro de alterações.
 3. `20261105000003_seguranca_rls.sql`: permissões de acesso para visitante, colaboradora e administradora.
-4. `20261105000004_dados_iniciais.sql`: categorias, equipe, serviços e horário do salão. Este arquivo é **gerado** a partir de `src/data` com `npm run db:seed`; não edite à mão.
+4. `20261105000004_dados_iniciais.sql`: categorias, equipe, serviços e horário do salão. Este arquivo é **gerado** a partir de `src/data` com `npm run db:seed`; não edite à mão. Depois da primeira carga, **o banco é quem manda**: serviços, preços e quem faz cada um são editados no painel (aba "Serviços & Preços"). A lista em `src/data/servicesData.ts` só é usada se o banco estiver fora do ar.
 5. `20261109000005_indices_extras.sql`: índices sugeridos pela verificação de desempenho do Supabase.
 6. `20261109000006_nome_regra_cancelamento.sql`: nome claro para a regra "cancelamento exige motivo".
 7. `20261110000007_cliente_remarca_cancela.sql`: link pessoal (`/meu-agendamento/<chave>`) para a cliente remarcar ou cancelar sozinha. Regras em `business_settings`: até 12 horas antes (`client_change_min_hours`), no máximo 2 remarcações (`client_max_reschedules`). A profissional substituída e a substituta recebem aviso (`staff_alert`) na fila de WhatsApp.
@@ -63,7 +63,7 @@ As migrações ficam em `supabase/migrations/` e devem ser aplicadas nesta ordem
 ```bash
 npm run test:db
 ```
-O comando roda todas as migrações num Postgres temporário e confere 66 situações: horários, conflitos, permissões, comissão, histórico e o link pessoal da cliente.
+O comando roda todas as migrações num Postgres temporário e confere 74 situações: horários, conflitos, permissões, comissão, histórico e o link pessoal da cliente.
 
 ### Opção A: Via Supabase CLI (Recomendado)
 ```bash

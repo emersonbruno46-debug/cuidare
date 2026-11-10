@@ -8,11 +8,11 @@ import {
   Sparkles, Clock, MapPin, Instagram, Phone, 
   ShieldCheck, Menu, X, ArrowRight
 } from 'lucide-react';
-import { services } from '../data/servicesData';
+import { getServices, useDataVersion } from '../lib/dataService';
 import { professionals as defaultProfessionals } from '../data/professionalsData';
 import { CATEGORIES } from '../data/categoriesData';
 import type { Service, Professional } from '../types';
-import { getBusinessSettings } from '../lib/businessSettings';
+import { getBusinessSettings, formatReais } from '../lib/businessSettings';
 import PrivacyPolicyModal from './PrivacyPolicyModal';
 
 gsap.registerPlugin(ScrollTrigger, Flip);
@@ -43,25 +43,27 @@ export default function LandingPage({ onOpenBooking, onNavigateToAdmin, professi
   const heroImageRef = useRef<HTMLDivElement>(null);
   const conceptRef = useRef<HTMLDivElement>(null);
 
-  const filteredServices = services.filter(s => s.category === activeCategory);
+  // Serviços e preços vêm do banco (editáveis no painel)
+  useDataVersion();
+  const filteredServices = getServices().filter(s => s.category === activeCategory);
 
   const getServiceFormattedPrice = (service: Service) => {
     if (service.category === 'cursos' && service.priceBase === 0) {
       return 'Sob consulta';
     }
     if (service.priceType === 'range' && service.priceRange) {
-      return `R$ ${service.priceRange.min},00 a R$ ${service.priceRange.max},00`;
+      return `${formatReais(service.priceRange.min)} a ${formatReais(service.priceRange.max)}`;
     }
     if (service.variablePrice) {
       if (service.priceRange) {
-        return `R$ ${service.priceRange.min},00 a R$ ${service.priceRange.max},00`;
+        return `${formatReais(service.priceRange.min)} a ${formatReais(service.priceRange.max)}`;
       }
       if (service.priceDetails) {
-        return `A partir de R$ ${service.priceDetails.P},00`;
+        return `A partir de ${formatReais(service.priceDetails.P)}`;
       }
-      return `A partir de R$ ${service.priceBase},00`;
+      return `A partir de ${formatReais(service.priceBase)}`;
     }
-    return `R$ ${service.priceBase},00`;
+    return `${formatReais(service.priceBase)}`;
   };
 
   // Scroll effect for Navbar

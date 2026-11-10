@@ -10,11 +10,10 @@ import { motion } from 'framer-motion';
 import { Calendar, Clock, User, Sparkles, Phone, ArrowLeft, Check, X, RefreshCw, AlertCircle } from 'lucide-react';
 import {
   fetchManagedBooking, fetchRescheduleSlots, clientRescheduleBooking, clientCancelBooking,
-  getProfessionals, useDataVersion, type ManagedBooking, type PublicSlot
+  getProfessionals, getServiceById, useDataVersion, type ManagedBooking, type PublicSlot
 } from '../lib/dataService';
 import { buildWhatsAppLink } from '../lib/businessSettings';
 import { formatDateLabel, getNextBusinessDays, getNowInSaoPaulo, addDaysToDateString } from '../lib/dateUtils';
-import { services as staticServices } from '../data/servicesData';
 
 type Mode = 'view' | 'reschedule' | 'cancel';
 const ANY = '__any__';
@@ -303,7 +302,7 @@ function ReschedulePanel({ token, booking, onBack, onDone }: {
 }) {
   // Profissionais que fazem este serviço
   const professionals = getProfessionals().filter(p => p.active !== false);
-  const service = staticServices.find(s => s.id === booking.serviceId);
+  const service = getServiceById(booking.serviceId);
   const eligible = professionals.filter(p =>
     !service ? p.id === booking.professionalId
       : service.professionalIds && service.professionalIds.length > 0

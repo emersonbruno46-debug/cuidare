@@ -97,3 +97,8 @@ export function buildBookingWhatsAppMessage(data: {
   return buildWhatsAppLink(phone, msg);
 }
 
+
+/** Valor em reais no formato brasileiro, ex.: 35 → "R$ 35,00"; 35.5 → "R$ 35,50". */
+export function formatReais(value: number): string {
+  return `R$ ${value.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}

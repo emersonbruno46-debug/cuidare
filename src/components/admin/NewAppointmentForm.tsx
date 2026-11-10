@@ -7,11 +7,11 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, MessageSquare, Sparkles, AlertCircle, Check, Search } from 'lucide-react';
 import type { AuthUser, BookingOrigin, BookingStatus } from '../../types';
-import { services } from '../../data/servicesData';
-import { getProfessionals, createBooking, getClientByPhone } from '../../lib/dataService';
+import { getProfessionals, createBooking, getClientByPhone, getServices } from '../../lib/dataService';
 import { parseBookingMessage, formatParsedDate } from '../../lib/nlParser';
 import { getAvailableSlots } from '../../lib/availability';
 import { getBookings } from '../../lib/dataService';
+import { formatReais } from '../../lib/businessSettings';
 
 interface NewAppointmentFormProps {
   initialDate?: string;
@@ -24,6 +24,7 @@ type FormStep = 'form' | 'nl' | 'success';
 
 export default function NewAppointmentForm({ initialDate, currentUser, onClose, onCreated }: NewAppointmentFormProps) {
   const professionals = getProfessionals().filter(p => p.active !== false);
+  const services = getServices();
   const isAdmin = currentUser.role === 'admin';
 
   const [step, setStep] = useState<FormStep>('form');
@@ -356,8 +357,8 @@ export default function NewAppointmentForm({ initialDate, currentUser, onClose, 
                         })
                         .map(s => {
                           const priceStr = (s.priceType === 'range' && s.priceRange)
-                            ? `R$ ${s.priceRange.min} a R$ ${s.priceRange.max}`
-                            : `R$ ${s.priceBase}`;
+                            ? `${formatReais(s.priceRange.min)} a ${formatReais(s.priceRange.max)}`
+                            : formatReais(s.priceBase);
                           return (
                             <option key={s.id} value={s.id}>{s.name} – {priceStr}</option>
                           );

@@ -7,8 +7,7 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Phone, Plus, Calendar, Clock } from 'lucide-react';
 import type { Client, AuthUser } from '../../types';
-import { getClientHistory, getBookings, addManualHistoryEntry, getProfessionals } from '../../lib/dataService';
-import { services } from '../../data/servicesData';
+import { getClientHistory, getBookings, addManualHistoryEntry, getProfessionals, getAllServices } from '../../lib/dataService';
 import { buildWhatsAppLink } from '../../lib/businessSettings';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -29,6 +28,8 @@ export default function ClientDetail({ client, onClose, currentUser }: ClientDet
   const [manualNotes, setManualNotes] = useState('');
   const [saving, setSaving] = useState(false);
   // A colaboradora só lança histórico em seu próprio nome
+  // Histórico pode incluir serviços que já saíram do site
+  const services = getAllServices();
   const professionals = getProfessionals().filter(
     p => currentUser.role === 'admin' || p.id === currentUser.professionalId
   );

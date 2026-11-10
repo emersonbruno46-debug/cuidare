@@ -5,12 +5,11 @@ import {
   ArrowLeft, ArrowRight, Search, Sparkles, MapPin,
   AlertCircle, ShieldCheck, Clock, UserCheck, Copy, Link2
 } from 'lucide-react';
-import { services } from '../data/servicesData';
 import { professionals as defaultProfessionals } from '../data/professionalsData';
 import { CATEGORIES } from '../data/categoriesData';
 import type { Service, Professional, Booking } from '../types';
-import { fetchAvailableSlots, createPublicBooking, buildManageUrl, type PublicSlot } from '../lib/dataService';
-import { buildWhatsAppLink } from '../lib/businessSettings';
+import { fetchAvailableSlots, createPublicBooking, buildManageUrl, getServices, useDataVersion, type PublicSlot } from '../lib/dataService';
+import { buildWhatsAppLink, formatReais } from '../lib/businessSettings';
 import { getNextBusinessDays, formatDateLabel } from '../lib/dateUtils';
 import { serviceMatchesQuery } from '../lib/searchUtils';
 import PrivacyPolicyModal from './PrivacyPolicyModal';
@@ -31,6 +30,9 @@ export default function BookingModal({
   professionals: propProfessionals
 }: BookingModalProps) {
   const activeProfessionals = propProfessionals || defaultProfessionals;
+  // Serviços e preços vêm do banco (editáveis no painel)
+  useDataVersion();
+  const services = getServices();
   const searchInputId = useId();
   const nameInputId = useId();
   const phoneInputId = useId();
@@ -341,18 +343,18 @@ Gostaria de enviar este comprovante para confirmação.` +
       return 'Sob consulta';
     }
     if (service.priceType === 'range' && service.priceRange) {
-      return `R$ ${service.priceRange.min},00 a R$ ${service.priceRange.max},00`;
+      return `${formatReais(service.priceRange.min)} a ${formatReais(service.priceRange.max)}`;
     }
     if (service.variablePrice) {
       if (service.priceRange) {
-        return `R$ ${service.priceRange.min},00 a R$ ${service.priceRange.max},00`;
+        return `${formatReais(service.priceRange.min)} a ${formatReais(service.priceRange.max)}`;
       }
       if (service.priceDetails) {
-        return `A partir de R$ ${service.priceDetails.P},00`;
+        return `A partir de ${formatReais(service.priceDetails.P)}`;
       }
-      return `A partir de R$ ${service.priceBase},00`;
+      return `A partir de ${formatReais(service.priceBase)}`;
     }
-    return `R$ ${service.priceBase},00`;
+    return `${formatReais(service.priceBase)}`;
   };
 
   const stepTitles = [

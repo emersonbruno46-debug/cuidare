@@ -9,7 +9,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   DollarSign, Calendar, Users, ArrowLeft,
   AlertCircle, Search, LayoutDashboard,
-  Award, Bell, Menu, Settings, UserCog, LogOut, KeyRound, RefreshCw
+  Award, Bell, Menu, Settings, UserCog, LogOut, KeyRound, RefreshCw, Scissors
 } from 'lucide-react';
 import type { Booking, Client, AuthUser } from '../types';
 import {
@@ -23,12 +23,13 @@ import NewAppointmentForm from './admin/NewAppointmentForm';
 import ClientDetail from './admin/ClientDetail';
 import BusinessSettingsPanel from './admin/BusinessSettingsPanel';
 import StaffManager from './admin/StaffManager';
+import ServicesManager from './admin/ServicesManager';
 
 interface AdminPanelProps {
   currentUser: AuthUser;
 }
 
-type AdminTab = 'dashboard' | 'agenda' | 'clientes' | 'comissoes' | 'configuracoes' | 'staff';
+type AdminTab = 'dashboard' | 'agenda' | 'clientes' | 'comissoes' | 'configuracoes' | 'staff' | 'servicos';
 
 const Logo = () => (
   <div className="w-8 h-8 rounded-lg bg-[#29231F] flex items-center justify-center text-white font-bold text-sm">C</div>
@@ -181,6 +182,7 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
     { id: 'clientes' as AdminTab, name: 'Base de Clientes', icon: Users },
     { id: 'comissoes' as AdminTab, name: 'Produção & Comissões', icon: DollarSign },
     { id: 'staff' as AdminTab, name: 'Equipe', icon: UserCog, adminOnly: true },
+    { id: 'servicos' as AdminTab, name: 'Serviços & Preços', icon: Scissors, adminOnly: true },
     { id: 'configuracoes' as AdminTab, name: 'Configurações', icon: Settings, adminOnly: true },
   ].filter(item => !item.adminOnly || isAdmin);
 
@@ -570,6 +572,8 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
 
             {/* STAFF */}
             {activeTab === 'staff' && isAdmin && <StaffManager />}
+
+            {activeTab === 'servicos' && isAdmin && <ServicesManager />}
 
             {/* CONFIGURAÇÕES */}
             {activeTab === 'configuracoes' && isAdmin && <BusinessSettingsPanel />}

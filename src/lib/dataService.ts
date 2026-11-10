@@ -14,9 +14,10 @@ import { useSyncExternalStore } from 'react';
 import type {
   Booking, BookingStatus, BookingOrigin, Client, ClientHistoryEntry, AvailabilityRule,
   ScheduleBlock, AuditLog, Professional, NotificationJob, BusinessSettings,
-  RescheduleEntry, ServiceCategory, UserRole
+  RescheduleEntry, ServiceCategory, UserRole, Service, ServiceFlowType
 } from '../types';
 import { professionals as staticProfessionals } from '../data/professionalsData';
+import { services as staticServices } from '../data/servicesData';
 import { getCurrentUser } from './auth';
 import { getSupabase, isSupabaseConfigured, friendlyDbError } from './supabase';
 import { timeToMinutes, isProfessionalAvailableForWindow, getNowInSaoPaulo } from './availability';
@@ -40,6 +41,7 @@ export interface StaffMember {
 
 interface Cache {
   professionals: Professional[];
+  services: Service[];
   bookings: Booking[];
   clients: Client[];
   history: ClientHistoryEntry[];
@@ -50,7 +52,7 @@ interface Cache {
 }
 
 const emptyCache = (): Cache => ({
-  professionals: [], bookings: [], clients: [], history: [], rules: [], blocks: [], staff: [], auditLogs: []
+  professionals: [], services: [], bookings: [], clients: [], history: [], rules: [], blocks: [], staff: [], auditLogs: []
 });
 
 let cache: Cache = emptyCache();
@@ -99,6 +101,33 @@ function toProfessional(r: Row): Professional {
     instagram: optStr(r.instagram),
     commissionRate: num(r.commission_rate),
     active: r.active !== false
+  };
+}
+
+function toService(r: Row): Service {
+  const priceType = String(r.price_type ?? 'fixed');
+  const hasSizes = r.price_p != null && r.price_m != null && r.price_g != null;
+  const hasRange = r.price_min != null && r.price_max != null;
+  const recommendations = (r.recommendations as string[]) ?? [];
+  const professionalIds = (r.professional_ids as string[]) ?? [];
+  return {
+    id: String(r.id),
+    name: String(r.name),
+    category: r.category as ServiceCategory,
+    priceBase: num(r.price_base),
+    priceType: priceType === 'fixed' ? undefined : (priceType as Service['priceType']),
+    priceDetails: hasSizes ? { P: num(r.price_p), M: num(r.price_m), G: num(r.price_g) } : undefined,
+    priceRange: hasRange ? { min: num(r.price_min), max: num(r.price_max) } : undefined,
+    duration: num(r.duration),
+    description: String(r.description ?? ''),
+    recommendations: recommendations.length > 0 ? recommendations : undefined,
+    variablePrice: r.variable_price === true,
+    professionalIds: professionalIds.length > 0 ? professionalIds : undefined,
+    note: optStr(r.note),
+    flowType: (r.flow_type as ServiceFlowType) ?? 'agendamento_direto',
+    flowBadge: optStr(r.flow_badge),
+    active: r.active !== false,
+    sortOrder: num(r.sort_order)
   };
 }
 
@@ -301,12 +330,14 @@ let publicLoaded = false;
 export async function loadPublicData(): Promise<void> {
   if (!isSupabaseConfigured) return;
   const supabase = getSupabase();
-  const [pros, settings, hours] = await Promise.all([
+  const [pros, settings, hours, svcs] = await Promise.all([
     supabase.from('professionals').select('*').order('sort_order'),
     supabase.from('business_settings').select('*').eq('id', 1).maybeSingle(),
-    supabase.from('business_hours').select('*')
+    supabase.from('business_hours').select('*'),
+    supabase.from('services').select('*').order('sort_order')
   ]);
   if (!pros.error && pros.data) cache.professionals = (pros.data as Row[]).map(toProfessional);
+  if (!svcs.error && svcs.data) cache.services = (svcs.data as Row[]).map(toService);
   if (!settings.error && !hours.error) {
     setBusinessSettingsCache(toSettings((settings.data as Row) ?? null, (hours.data as Row[]) ?? []));
   }
@@ -334,8 +365,9 @@ export function loadStaffData(): Promise<void> {
       const sinceStr = since.toISOString().slice(0, 10);
 
       const isAdmin = user.role === 'admin';
-      const [pros, bookings, clients, history, rules, blocks, staff, audit] = await Promise.all([
+      const [pros, svcs, bookings, clients, history, rules, blocks, staff, audit] = await Promise.all([
         fetchAll('professionals', q => q.order('sort_order')),
+        fetchAll('services', q => q.order('sort_order')),
         fetchAll('bookings', q => q.gte('date', sinceStr).order('date', { ascending: false }).order('start_time', { ascending: false })),
         fetchAll('clients_overview', q => q.order('name')),
         fetchAll('client_history', q => q.order('date', { ascending: false })),
@@ -350,6 +382,7 @@ export function loadStaffData(): Promise<void> {
 
       cache = {
         professionals: pros.map(toProfessional),
+        services: svcs.map(toService),
         bookings: bookings.map(toBooking),
         clients: clients.map(toClient),
         history: history.map(toHistory),
@@ -368,8 +401,8 @@ export function loadStaffData(): Promise<void> {
 
 /** Ao sair do painel: esquece os dados pessoais que estavam na memória. */
 export function clearStaffData(): void {
-  const professionals = cache.professionals;
-  cache = { ...emptyCache(), professionals };
+  const { professionals, services } = cache;
+  cache = { ...emptyCache(), professionals, services };
   changed();
 }
 
@@ -470,6 +503,131 @@ export async function removeProfessional(id: string): Promise<{ error?: string }
 /** Traz de volta uma profissional que tinha saído. O acesso ao painel é religado à parte. */
 export async function restoreProfessional(id: string): Promise<{ error?: string }> {
   return updateProfessional(id, { active: true });
+}
+
+// ═════════════════════════════════════════════
+// SERVIÇOS E PREÇOS
+// ═════════════════════════════════════════════
+
+/** Serviços que aparecem no site (só os ativos). Sem banco, usa a lista do código. */
+export function getServices(): Service[] {
+  return getAllServices().filter(s => s.active !== false);
+}
+
+/** Todos os serviços, inclusive os desativados (para o painel). */
+export function getAllServices(): Service[] {
+  return cache.services.length > 0 ? cache.services : staticServices;
+}
+
+export function getServiceById(id: string): Service | undefined {
+  return getAllServices().find(s => s.id === id);
+}
+
+/** Profissionais que fazem um serviço: a lista do serviço, ou todas da categoria. */
+export function getProfessionalsForService(service: Service): Professional[] {
+  return getProfessionals().filter(p =>
+    p.active !== false &&
+    (service.professionalIds && service.professionalIds.length > 0
+      ? service.professionalIds.includes(p.id)
+      : p.categories.includes(service.category))
+  );
+}
+
+/** Como o preço aparece no site. */
+export type PriceMode = 'fixed' | 'from' | 'sizes' | 'range';
+
+export function getPriceMode(service: Service): PriceMode {
+  if (service.priceDetails) return 'sizes';
+  if (service.priceRange) return 'range';
+  if (service.variablePrice) return 'from';
+  return 'fixed';
+}
+
+export interface ServiceInput {
+  name: string;
+  category: ServiceCategory;
+  description: string;
+  duration: number;
+  priceMode: PriceMode;
+  price: number;                 // fixo ou "a partir de"
+  sizes: { P: number; M: number; G: number };
+  range: { min: number; max: number };
+  professionalIds: string[];     // vazio = todas da categoria
+  note: string;
+  flowType: ServiceFlowType;
+  flowBadge: string;
+  active: boolean;
+}
+
+/** Cria (sem id) ou altera (com id) um serviço. */
+export async function saveService(input: ServiceInput, id?: string): Promise<{ error?: string; id?: string }> {
+  const name = input.name.trim().replace(/\s+/g, ' ');
+  if (name.length < 2) return { error: 'Informe o nome do serviço.' };
+  const duration = Math.round(input.duration);
+  if (!Number.isFinite(duration) || duration < 5 || duration > 720) return { error: 'A duração precisa ficar entre 5 e 720 minutos.' };
+
+  const valid = (n: number) => Number.isFinite(n) && n >= 0;
+  const row: Row = {
+    name,
+    category: input.category,
+    description: input.description.trim(),
+    duration,
+    professional_ids: input.professionalIds,
+    note: input.note.trim() || null,
+    flow_type: input.flowType,
+    flow_badge: input.flowBadge.trim() || null,
+    active: input.active,
+    price_type: 'fixed',
+    price_p: null, price_m: null, price_g: null,
+    price_min: null, price_max: null
+  };
+
+  if (input.priceMode === 'sizes') {
+    const { P, M, G } = input.sizes;
+    if (![P, M, G].every(valid)) return { error: 'Preencha os preços P, M e G.' };
+    Object.assign(row, { price_base: P, price_p: P, price_m: M, price_g: G, variable_price: true });
+  } else if (input.priceMode === 'range') {
+    const { min, max } = input.range;
+    if (!valid(min) || !valid(max)) return { error: 'Preencha o preço mínimo e o máximo.' };
+    if (min > max) return { error: 'O preço mínimo não pode ser maior que o máximo.' };
+    Object.assign(row, { price_base: min, price_min: min, price_max: max, price_type: 'range', variable_price: true });
+  } else {
+    if (!valid(input.price)) return { error: 'Informe o preço.' };
+    Object.assign(row, { price_base: input.price, variable_price: input.priceMode === 'from' });
+  }
+
+  const supabase = getSupabase();
+  let result;
+  if (id) {
+    result = await supabase.from('services').update(row).eq('id', id).select().single();
+  } else {
+    const all = getAllServices();
+    const base = slugify(name);
+    let newId = base;
+    for (let n = 2; all.some(s => s.id === newId); n++) newId = `${base}-${n}`;
+    const sortOrder = all.reduce((max, s) => Math.max(max, s.sortOrder ?? 0), 0) + 1;
+    result = await supabase.from('services').insert({ ...row, id: newId, sort_order: sortOrder }).select().single();
+  }
+  if (result.error) return { error: friendlyDbError(result.error) };
+
+  const saved = toService(result.data as Row);
+  // Se a memória ainda está com a lista do código, passa a usar a do banco a partir daqui
+  const current = cache.services.length > 0 ? cache.services : [];
+  cache.services = current.some(s => s.id === saved.id)
+    ? current.map(s => (s.id === saved.id ? saved : s))
+    : [...current, saved];
+  changed();
+  return { id: saved.id };
+}
+
+/** Liga ou desliga um serviço no site, sem apagar nada. */
+export async function setServiceActive(id: string, active: boolean): Promise<{ error?: string }> {
+  const { data, error } = await getSupabase().from('services').update({ active }).eq('id', id).select().single();
+  if (error) return { error: friendlyDbError(error) };
+  const saved = toService(data as Row);
+  cache.services = cache.services.map(s => (s.id === id ? saved : s));
+  changed();
+  return {};
 }
 
 // ═════════════════════════════════════════════
