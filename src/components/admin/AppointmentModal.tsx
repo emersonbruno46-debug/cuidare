@@ -10,7 +10,7 @@ import {
   Clock, Calendar, User, MessageSquare, AlertTriangle, RefreshCw, History
 } from 'lucide-react';
 import type { Booking, BookingStatus, AuthUser } from '../../types';
-import { updateBooking, deleteBooking, rescheduleBooking, getProfessionals, getBookings } from '../../lib/dataService';
+import { updateBooking, deleteBooking, rescheduleBooking, getProfessionals, getBookings, buildManageUrl } from '../../lib/dataService';
 import { buildWhatsAppLink } from '../../lib/businessSettings';
 import { services } from '../../data/servicesData';
 import { getAvailableSlots } from '../../lib/availability';
@@ -176,7 +176,10 @@ export default function AppointmentModal({ booking, onClose, onUpdated, currentU
 
   const whatsappLink = buildWhatsAppLink(
     booking.clientPhone,
-    `Olá ${booking.clientName}! Sua consulta de ${booking.serviceName} está agendada para ${formatDate(booking.date)} às ${booking.time}h com ${booking.professionalName} na Cuidare.`
+    `Olá ${booking.clientName}! Sua consulta de ${booking.serviceName} está agendada para ${formatDate(booking.date)} às ${booking.time}h com ${booking.professionalName} na Cuidare.` +
+      (booking.manageToken && (booking.status === 'pendente' || booking.status === 'confirmado')
+        ? `\n\nSe precisar remarcar ou cancelar, use seu link pessoal: ${buildManageUrl(booking.manageToken)}`
+        : '')
   );
 
   return (

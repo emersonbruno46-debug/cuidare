@@ -120,6 +120,7 @@ export interface Booking {
   updatedAt?: string; // ISO
   rescheduleHistory?: RescheduleEntry[];
   cancelReason?: string;
+  manageToken?: string; // chave do link pessoal da cliente (/meu-agendamento/<chave>)
 }
 
 export interface Client {

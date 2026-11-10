@@ -156,6 +156,79 @@ ok(logs.some(l => l.user_name === 'Site (público)' && l.entity_type === 'bookin
   'registro de alterações identifica site, colaboradora e admin');
 await expectError(`delete from audit_logs`, [], 'nem a admin apaga o registro de alterações');
 
+console.log('\n[Cliente pelo link pessoal]');
+await as('anon');
+r = await book({ pro: 'railma', name: 'Eva Link', phone: '38933332222', time: '10:00' });
+const tok = r.booking?.manageToken;
+ok(r.success && /^[0-9a-f]{64}$/.test(tok ?? ''), 'agendamento do site devolve a chave do link', JSON.stringify(r));
+const openLink = async (t) => (await q('select get_booking_by_token($1) r', [t]))[0].r;
+let g = await openLink(tok);
+ok(g.success && g.booking.canReschedule && g.booking.canCancel && g.booking.reschedulesLeft === 2 && !JSON.stringify(g).includes('33332222'),
+  'link abre o agendamento sem mostrar o telefone', JSON.stringify(g));
+ok(!(await openLink('a'.repeat(64))).success && !(await openLink('abc')).success, 'chave errada não abre nada');
+const rs = await q(`select to_char(slot_time,'HH24:MI') t from get_reschedule_slots($1, $2, 'railma')`, [tok, tue]);
+ok(rs.some(s => s.t === '10:00') && rs.some(s => s.t === '10:30'), 'remarcação considera o próprio horário como livre', rs.map(s => s.t).join(' '));
+ok((await q(`select * from get_reschedule_slots($1, $2)`, ['b'.repeat(64), tue])).length === 0, 'chave errada não lista horários');
+await expectError(`select * from private.available_slots('escova-simples', '${tue}', null, null)`, [], 'visitante NÃO chama a lista interna de horários');
+
+const move = async (date, time, pro) => (await q('select client_reschedule_booking($1,$2,$3,$4) r', [tok, date, time, pro]))[0].r;
+let mv = await move(tue, '10:30', 'maisa');
+ok(mv.success && mv.booking.professionalId === 'maisa' && mv.booking.time === '10:30', '1ª remarcação: passa para a Maísa às 10:30', JSON.stringify(mv));
+const evaId = mv.booking.id;
+await db.exec('reset role');
+let alerts = await q(`select recipient_name, message from notification_queue where booking_id = $1 and type = 'staff_alert' order by created_at, recipient_name`, [evaId]);
+ok(alerts.length === 2 && alerts.some(a => a.recipient_name === 'Railma' && a.message.includes('ficou livre'))
+  && alerts.some(a => a.recipient_name.startsWith('Maísa') && a.message.includes('novo atendimento')),
+  'avisa a profissional substituída e a substituta', JSON.stringify(alerts));
+const evaRow = (await q(`select updated_by_name, reschedule_history h, client_reschedule_count c, commission_rate::float cr from bookings where id = $1`, [evaId]))[0];
+ok(evaRow.updated_by_name === 'Cliente (pelo link)' && evaRow.h.at(-1).changedByName === 'Cliente (pelo link)' && evaRow.c === 1,
+  'histórico mostra que foi a cliente', JSON.stringify(evaRow));
+const clientMsg = (await q(`select message from notification_queue where booking_id = $1 and type = 'booking_rescheduled' and status = 'pending'`, [evaId]))[0];
+ok(clientMsg && clientMsg.message.includes('/meu-agendamento/' + tok), 'mensagem da cliente leva o link pessoal');
+
+await as('anon');
+mv = await move(tue, '14:00', null);
+ok(mv.success && mv.booking.professionalId === 'maisa' && mv.booking.time === '14:00', '2ª remarcação: "qualquer profissional" mantém a atual se ela estiver livre', JSON.stringify(mv));
+mv = await move(tue, '15:00', null);
+ok(!mv.success && mv.error.includes('2 vezes'), '3ª remarcação é recusada (limite de 2)', JSON.stringify(mv));
+g = await openLink(tok);
+ok(g.success && !g.booking.canReschedule && g.booking.canCancel && g.booking.reschedulesLeft === 0, 'depois do limite ainda pode cancelar', JSON.stringify(g));
+
+let cx = (await q('select client_cancel_booking($1, $2) r', [tok, 'Imprevisto']))[0].r;
+ok(cx.success, 'cliente cancela pelo link', JSON.stringify(cx));
+await db.exec('reset role');
+const cancelled = (await q(`select status, cancel_reason from bookings where id = $1`, [evaId]))[0];
+ok(cancelled.status === 'cancelado' && cancelled.cancel_reason === 'Cancelado pela cliente pelo link: Imprevisto', 'cancelamento registra o motivo', JSON.stringify(cancelled));
+alerts = await q(`select message from notification_queue where booking_id = $1 and type = 'staff_alert'`, [evaId]);
+ok(alerts.length === 4 && alerts.some(a => a.message.includes('cancelou')), 'profissional é avisada do cancelamento');
+const pendingAlerts = (await q(`select count(*)::int n from notification_queue where booking_id = $1 and type = 'staff_alert' and status = 'pending'`, [evaId]))[0].n;
+ok(pendingAlerts === 4, 'avisos da equipe não são descartados quando a cliente muda de novo', String(pendingAlerts));
+await as('anon');
+cx = (await q('select client_cancel_booking($1) r', [tok]))[0].r;
+ok(!cx.success, 'não cancela duas vezes');
+ok((await q(`select * from get_available_slots('escova-simples', $1, 'maisa') where slot_time = '14:00'`, [tue])).length === 1, 'horário cancelado pela cliente volta a ficar livre');
+
+// Regra das 12 horas e validade do link
+await db.exec('reset role');
+const [{ tk: nearTok }] = await q(`
+  insert into bookings (service_id, service_name, professional_id, professional_name, client_name, client_phone, date, start_time, duration, price)
+  select 'escova-simples', '', 'fabiane', '', 'Perto', '38922221111', t::date, date_trunc('minute', t)::time, 5, 0
+  from (select private.now_sp() + interval '6 hours' t) x returning manage_token tk`);
+const [{ tk: pastTok }] = await q(`
+  insert into bookings (service_id, service_name, professional_id, professional_name, client_name, client_phone, date, start_time, duration, price)
+  values ('escova-simples', '', 'lara', '', 'Passado', '38911110000', $1, '09:00', 30, 0) returning manage_token tk`, [past]);
+await as('anon');
+g = await openLink(nearTok);
+ok(g.success && !g.booking.canCancel && !g.booking.canReschedule && g.booking.blockReason.includes('12 horas'), 'com menos de 12h não deixa mudar', JSON.stringify(g));
+cx = (await q('select client_cancel_booking($1) r', [nearTok]))[0].r;
+ok(!cx.success && cx.error.includes('12 horas'), 'cancelar com menos de 12h é recusado no banco');
+g = await openLink(pastTok);
+ok(!g.success && g.expired, 'link expira depois do horário do atendimento', JSON.stringify(g));
+
+await as('authenticated', ADMIN);
+await q(`update bookings set manage_token = 'trocada' where id = $1`, [evaId]);
+ok((await q(`select manage_token from bookings where id = $1`, [evaId]))[0].manage_token === tok, 'a chave do link nunca muda');
+
 console.log('\n[Equipe desativada]');
 await as('authenticated', ADMIN);
 await q(`update staff_members set active = false where user_id = $1`, [RAILMA]);
