@@ -257,6 +257,24 @@ ok(colabUpd.length === 0, 'colaboradora NÃO altera preços');
 await expectError(`insert into services (id, name, category, price_base, duration) values ('hack', 'Hack', 'unhas', 1, 30)`, [], 'colaboradora NÃO cria serviços');
 await as('authenticated', ADMIN);
 
+console.log('\n[Agendamento sem telefone (agenda de papel)]');
+await as('authenticated', ADMIN);
+const clientsBefore = (await q(`select count(*)::int n from clients`))[0].n;
+const [semTel] = await q(`
+  insert into bookings (service_id, service_name, professional_id, professional_name, client_name, client_phone, date, start_time, duration, price, status, origin)
+  values ('escova-simples', '', 'railma', '', 'Jaque', null, $1, '13:00', 45, 35, 'confirmado', 'manual_admin') returning id, client_id, client_phone`, [tue]);
+ok(semTel && semTel.client_id === null && semTel.client_phone === null, 'grava agendamento sem telefone e sem ficha de cliente', JSON.stringify(semTel));
+await db.exec('reset role');
+ok((await q(`select count(*)::int n from clients`))[0].n === clientsBefore, 'não cria cliente falsa');
+ok((await q(`select count(*)::int n from notification_queue where booking_id = $1`, [semTel.id]))[0].n === 0, 'nenhuma mensagem para quem não tem telefone');
+await as('authenticated', ADMIN);
+await expectError(`insert into bookings (service_id, service_name, professional_id, professional_name, client_name, client_phone, date, start_time, duration, price, origin)
+  values ('escova-simples', '', 'railma', '', 'Outra', null, '${tue}', '13:15', 45, 35, 'manual_admin')`, [], 'sem telefone também respeita a trava de horário', 'bookings_sem_sobreposicao');
+await as('anon');
+r = await book({ phone: '', name: 'Site Sem Fone', time: '16:30' });
+ok(!r.success, 'no site o WhatsApp continua obrigatório');
+await as('authenticated', ADMIN);
+
 console.log('\n[Equipe desativada]');
 await as('authenticated', ADMIN);
 await q(`update staff_members set active = false where user_id = $1`, [RAILMA]);

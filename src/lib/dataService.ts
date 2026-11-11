@@ -144,7 +144,7 @@ function toBooking(r: Row): Booking {
     duration: num(r.duration),
     clientId: optStr(r.client_id),
     clientName: String(r.client_name),
-    clientPhone: String(r.client_phone),
+    clientPhone: r.client_phone == null ? '' : String(r.client_phone), // vazio = sem telefone (agenda de papel)
     clientEmail: optStr(r.client_email),
     notes: optStr(r.notes),
     status: r.status as BookingStatus,
@@ -755,7 +755,7 @@ export async function updateBooking(id: string, updates: Partial<Booking>): Prom
     patch.professional_name = updates.professionalName ?? null;
   }
   if (updates.clientName !== undefined) patch.client_name = updates.clientName.trim();
-  if (updates.clientPhone !== undefined) patch.client_phone = normalizeBrazilianPhone(updates.clientPhone);
+  if (updates.clientPhone !== undefined) patch.client_phone = normalizeBrazilianPhone(updates.clientPhone) || null;
   if (updates.paymentStatus !== undefined) patch.payment_status = updates.paymentStatus;
   if (updates.paymentMethod !== undefined) patch.payment_method = updates.paymentMethod || null;
   if (updates.rescheduleHistory !== undefined) patch.reschedule_history = updates.rescheduleHistory;

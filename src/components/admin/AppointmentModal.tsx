@@ -173,7 +173,8 @@ export default function AppointmentModal({ booking, onClose, onUpdated, currentU
     onClose();
   };
 
-  const whatsappLink = buildWhatsAppLink(
+  // Sem telefone (importado da agenda de papel): não há para quem mandar mensagem
+  const whatsappLink = !booking.clientPhone ? '' : buildWhatsAppLink(
     booking.clientPhone,
     `Olá ${booking.clientName}! Sua consulta de ${booking.serviceName} está agendada para ${formatDate(booking.date)} às ${booking.time}h com ${booking.professionalName} na Cuidare.` +
       (booking.manageToken && (booking.status === 'pendente' || booking.status === 'confirmado')
@@ -398,7 +399,7 @@ export default function AppointmentModal({ booking, onClose, onUpdated, currentU
                     { icon: Calendar, label: 'Data', value: formatDate(booking.date) },
                     { icon: Clock, label: 'Horário', value: `${booking.time}h — ${booking.endTime ?? ''}h (${booking.duration}min)` },
                     { icon: User, label: 'Profissional', value: booking.professionalName },
-                    { icon: Phone, label: 'Telefone', value: booking.clientPhone },
+                    { icon: Phone, label: 'Telefone', value: booking.clientPhone || 'Sem telefone' },
                     { icon: MessageSquare, label: 'Observações', value: booking.notes || '—' },
                     ...(booking.status === 'cancelado' && booking.cancelReason
                       ? [{ icon: XCircle, label: 'Motivo do cancelamento', value: booking.cancelReason }]
