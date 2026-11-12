@@ -216,7 +216,23 @@ export default function LandingPage({ onOpenBooking, onNavigateToAdmin, professi
         ref={heroRef}
         className="relative min-h-[92vh] lg:min-h-screen pt-24 lg:pt-28 pb-12 overflow-hidden flex items-center bg-[#FAF8F5]"
       >
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full grid lg:grid-cols-12 gap-8 lg:gap-12 items-center">
+        {/* Fachada desfocada ao fundo, atrás das colaboradoras */}
+        <div aria-hidden="true" className="absolute inset-0 z-0 pointer-events-none">
+          <img
+            src="/background-hero.webp"
+            alt=""
+            width={1672}
+            height={941}
+            loading="eager"
+            decoding="async"
+            className="absolute inset-0 w-full h-full object-cover object-center scale-110 blur-[5px] opacity-75"
+          />
+          {/* Véu claro: mais forte do lado do texto e embaixo, para manter a leitura */}
+          <div className="absolute inset-0 bg-gradient-to-b from-[#FAF8F5]/60 via-[#FAF8F5]/55 to-[#FAF8F5]/90 lg:bg-gradient-to-r lg:from-[#FAF8F5] lg:via-[#FAF8F5]/80 lg:to-[#FAF8F5]/25" />
+          <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-[#FAF8F5] to-transparent" />
+        </div>
+
+        <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full grid lg:grid-cols-12 gap-8 lg:gap-12 items-center">
           
           {/* Hero Copy (5-6 cols) */}
           <div ref={heroContentRef} className="lg:col-span-6 xl:col-span-5 space-y-6 z-10">
