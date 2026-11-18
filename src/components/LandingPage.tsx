@@ -14,6 +14,7 @@ import { CATEGORIES } from '../data/categoriesData';
 import type { Service, Professional } from '../types';
 import { getBusinessSettings, formatReais } from '../lib/businessSettings';
 import PrivacyPolicyModal from './PrivacyPolicyModal';
+import SpaceGallery from './SpaceGallery';
 
 gsap.registerPlugin(ScrollTrigger, Flip);
 
@@ -314,19 +315,9 @@ export default function LandingPage({ onOpenBooking, onNavigateToAdmin, professi
               </div>
             </div>
 
-            {/* Atmosphere Image */}
+            {/* Galeria do espaço: fotos reais correndo em cards */}
             <div className="lg:w-[52%] w-full concept-reveal">
-              <div className="aspect-[4/3] w-full overflow-hidden rounded-2xl border border-[#E6DFD5] shadow-md bg-[#FAF8F5]">
-                <img 
-                  src="/background-hero.webp" 
-                  alt="Ambiente do Espaço Cuidare em Taiobeiras" 
-                  width={1000}
-                  height={750}
-                  loading="lazy"
-                  decoding="async"
-                  className="w-full h-full object-cover"
-                />
-              </div>
+              <SpaceGallery />
             </div>
 
           </div>

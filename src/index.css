@@ -92,3 +92,30 @@
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
+
+/* ─── Galeria do espaço: cards correndo sem parar ─── */
+.space-marquee-v {
+  -webkit-mask-image: linear-gradient(to bottom, transparent, #000 12%, #000 88%, transparent);
+  mask-image: linear-gradient(to bottom, transparent, #000 12%, #000 88%, transparent);
+}
+.space-marquee-h {
+  -webkit-mask-image: linear-gradient(to right, transparent, #000 8%, #000 92%, transparent);
+  mask-image: linear-gradient(to right, transparent, #000 8%, #000 92%, transparent);
+}
+.space-up   { animation: space-up 38s linear infinite; }
+.space-down { animation: space-down 44s linear infinite; }
+.space-track-h { animation: space-left 45s linear infinite; }
+.space-marquee-v:hover .space-track-v,
+.space-marquee-h:hover .space-track-h,
+.space-marquee-v:focus-within .space-track-v,
+.space-marquee-h:focus-within .space-track-h { animation-play-state: paused; }
+@keyframes space-up    { from { transform: translateY(0); }    to { transform: translateY(-50%); } }
+@keyframes space-down  { from { transform: translateY(-50%); } to { transform: translateY(0); } }
+@keyframes space-left  { from { transform: translateX(0); }    to { transform: translateX(-50%); } }
+
+/* Quem prefere menos movimento: nada corre, dá para rolar com o dedo */
+@media (prefers-reduced-motion: reduce) {
+  .space-up, .space-down, .space-track-h { animation: none; }
+  .space-marquee-h { overflow-x: auto; }
+  .space-marquee-v > div { overflow-y: auto; }
+}
