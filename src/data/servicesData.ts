@@ -217,7 +217,7 @@ export const services: Service[] = [
     id: 'manicure-simples',
     name: 'Manicure Completa',
     category: 'unhas',
-    priceBase: 35,
+    priceBase: 30,
     duration: 40,
     description: 'Corte, lixamento, remoção de cutículas e esmaltação das mãos.'
   },
@@ -225,7 +225,7 @@ export const services: Service[] = [
     id: 'pedicure-simples',
     name: 'Pedicure Completa',
     category: 'unhas',
-    priceBase: 40,
+    priceBase: 30,
     duration: 40,
     description: 'Cuidado completo dos pés: corte, cuticulagem, lixamento e esmaltação.'
   },
@@ -233,9 +233,25 @@ export const services: Service[] = [
     id: 'pe-e-mao',
     name: 'Pé e Mão',
     category: 'unhas',
-    priceBase: 70,
+    priceBase: 60,
     duration: 80,
     description: 'Combo de atendimento completo para mãos e pés na mesma sessão.'
+  },
+  {
+    id: 'esmaltacao-gel',
+    name: 'Esmaltação em Gel',
+    category: 'unhas',
+    priceBase: 70,
+    duration: 60,
+    description: 'Esmaltação em gel com brilho e duração maior que o esmalte comum.'
+  },
+  {
+    id: 'so-pintar',
+    name: 'Só Pintar (Pé ou Mão)',
+    category: 'unhas',
+    priceBase: 12,
+    duration: 20,
+    description: 'Apenas a esmaltação das unhas dos pés ou das mãos, sem cutilagem.'
   },
   {
     id: 'spa-dos-pes',
