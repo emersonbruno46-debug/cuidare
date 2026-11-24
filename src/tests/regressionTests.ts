@@ -173,6 +173,17 @@ const isAvailableSunday = isProfessionalAvailableForWindow(
 );
 assert(!isAvailableSunday, 'Domingo é reportado como indisponível para qualquer horário');
 
+// Segunda: salão aberto (02/11/2026 é segunda)
+const isAvailableMonday = isProfessionalAvailableForWindow(
+  'maisa', '2026-11-02', timeToMinutes('10:00'), 30, []
+);
+assert(isAvailableMonday, 'Segunda aceita agendamento');
+
+// Calendário do agendamento segue o horário do salão: mostra segunda, esconde domingo
+const calendarWeekdays = getNextBusinessDays(14, '2026-10-31').map(d => d.dayOfWeek);
+assert(calendarWeekdays.includes(1), 'Calendário mostra segunda-feira');
+assert(!calendarWeekdays.includes(0), 'Calendário esconde domingo');
+
 // ──────────────────────────────────────────────────────
 // 6. TESTES DE PRESERVAÇÃO E ELEGIBILIDADE DA PROFISSIONAL
 // ──────────────────────────────────────────────────────

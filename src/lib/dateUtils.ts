@@ -5,6 +5,8 @@
 // Representação de horário: strings estritas HH:MM
 // ─────────────────────────────────────────────
 
+import { getBusinessSettings } from './businessSettings';
+
 export const BUSINESS_TIMEZONE = 'America/Sao_Paulo';
 
 export interface CalendarDayOption {
@@ -102,7 +104,7 @@ export function addDaysToDateString(dateString: string, daysToAdd: number): stri
 
 /**
  * Gera os próximos N dias de calendário a partir da data de hoje em São Paulo.
- * Filtra ou identifica dias de fechamento (Domingo: 0 e Segunda: 1).
+ * Pula os dias em que o salão está fechado (segundo o horário de funcionamento).
  */
 export function getNextBusinessDays(
   numberOfDays = 14,
@@ -121,8 +123,9 @@ export function getNextBusinessDays(
     // Criamos uma data meio-dia UTC para formatadores que exigem Date
     const refDate = new Date(Date.UTC(year, month - 1, day, 12, 0, 0));
 
-    // Domingo (0) e Segunda (1) são fechados
-    const isClosed = dayOfWeek === 0 || dayOfWeek === 1;
+    // Dia fechado segue o horário de funcionamento do salão (configurável no painel)
+    const daySetting = getBusinessSettings().openingHours.find(h => h.dayOfWeek === dayOfWeek);
+    const isClosed = !daySetting || daySetting.closed;
 
     if (!isClosed) {
       const weekdayShortFormatter = new Intl.DateTimeFormat('pt-BR', { timeZone: 'UTC', weekday: 'short' });

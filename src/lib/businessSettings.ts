@@ -17,7 +17,7 @@ export const DEFAULT_SETTINGS: BusinessSettings = {
   businessWhatsappMessage: 'Olá! Gostaria de solicitar informações sobre agendamento.',
   openingHours: [
     { dayOfWeek: 0, open: '', close: '', closed: true }, // Domingo
-    { dayOfWeek: 1, open: '', close: '', closed: true }, // Segunda
+    { dayOfWeek: 1, open: '08:00', close: '19:30', closed: false }, // Segunda
     { dayOfWeek: 2, open: '08:00', close: '19:30', closed: false },
     { dayOfWeek: 3, open: '08:00', close: '19:30', closed: false },
     { dayOfWeek: 4, open: '08:00', close: '19:30', closed: false },
