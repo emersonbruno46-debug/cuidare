@@ -52,7 +52,8 @@ export const isProfessionalAvailableForWindow = (
 
   const openMin = timeToMinutes(daySetting.open);
   const closeMin = timeToMinutes(daySetting.close);
-  if (startMinutes < openMin || endMinutes > closeMin) return false;
+  // close = último horário de início (o serviço pode terminar depois)
+  if (startMinutes < openMin || startMinutes > closeMin) return false;
 
   // 2. Check lunch / break interval
   if (daySetting.breakStart && daySetting.breakEnd) {
@@ -141,7 +142,7 @@ export const getAvailableSlots = (
 
   const slots: string[] = [];
 
-  for (let current = openMin; current + serviceDuration <= closeMin; current += step) {
+  for (let current = openMin; current <= closeMin; current += step) {
     // Exclude past times if date is today in Sao Paulo
     if (isToday && current <= currentMinutes + leadTimeBuffer) {
       continue;

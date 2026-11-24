@@ -172,7 +172,7 @@ export default function BusinessSettingsPanel() {
                       onChange={e => updateHours(h.dayOfWeek, 'open', e.target.value)}
                       className="h-8 px-2 border border-[rgba(37,27,23,0.12)] rounded text-xs focus:outline-none focus:border-[#C7A15D]"
                     />
-                    <span className="text-xs text-[#7C736D]">até</span>
+                    <span className="text-xs text-[#7C736D]">último início</span>
                     <input
                       type="time"
                       value={h.close}

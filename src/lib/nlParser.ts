@@ -159,7 +159,7 @@ function findService(text: string): { serviceId: string; serviceName: string; ra
     'manicure': 'manicure-simples',
     'pedicure': 'pedicure-simples',
     'corte': 'corte',
-    'progressiva': 'progressiva-sem-formol',
+    'progressiva': 'progressiva-com-formol',
     'cilios': 'cilios-classico',
     'cílios': 'cilios-classico',
     'design': 'design-sobrancelha',

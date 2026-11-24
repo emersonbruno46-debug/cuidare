@@ -155,12 +155,17 @@ const isAvailableBeforeBreak = isProfessionalAvailableForWindow(
 );
 assert(isAvailableBeforeBreak, 'Procedimento de 30 min às 11:00 encerra às 11:30 e é aceito');
 
-// Procedimento que ultrapassa o fechamento (18:00)
-// Procedimento de 60 min começando às 17:30 terminaria às 18:30 -> recusado
-const isAvailablePastClose = isProfessionalAvailableForWindow(
-  'maisa', '2026-10-29', timeToMinutes('17:30'), 60, []
+// Último horário de início (19:30): o serviço pode começar às 19:30 e terminar depois
+const isAvailableLastStart = isProfessionalAvailableForWindow(
+  'maisa', '2026-10-29', timeToMinutes('19:30'), 60, []
 );
-assert(!isAvailablePastClose, 'Procedimento às 17:30 com 60 min ultrapassa o fechamento (18:00) e é recusado');
+assert(isAvailableLastStart, 'Procedimento de 60 min às 19:30 (último início) é aceito');
+
+// Começar depois do último horário de início -> recusado
+const isAvailablePastClose = isProfessionalAvailableForWindow(
+  'maisa', '2026-10-29', timeToMinutes('20:00'), 30, []
+);
+assert(!isAvailablePastClose, 'Procedimento às 20:00 passa do último início (19:30) e é recusado');
 
 // Domingo: salão fechado
 const isAvailableSunday = isProfessionalAvailableForWindow(

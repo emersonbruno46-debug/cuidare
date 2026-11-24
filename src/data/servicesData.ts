@@ -157,6 +157,7 @@ export const services: Service[] = [
   {
     id: 'progressiva-sem-formol',
     name: 'Progressiva Sem Formol',
+    active: false,
     category: 'quimicas',
     priceBase: 180,
     priceRange: { min: 180, max: 250 },
@@ -169,8 +170,8 @@ export const services: Service[] = [
     id: 'progressiva-com-formol',
     name: 'Progressiva Com Formol',
     category: 'quimicas',
-    priceBase: 190,
-    priceRange: { min: 190, max: 350 },
+    priceBase: 180,
+    priceRange: { min: 180, max: 350 },
     duration: 150,
     description: 'Alisamento tradicional de alta eficácia com selagem térmica dos fios.',
     variablePrice: true,
@@ -275,7 +276,7 @@ export const services: Service[] = [
     id: 'design-sobrancelha',
     name: 'Design de Sobrancelha',
     category: 'sobrancelhas',
-    priceBase: 40,
+    priceBase: 30,
     duration: 30,
     description: 'Mapeamento facial e pinçamento para harmonia perfeita do seu olhar.'
   },
@@ -283,7 +284,7 @@ export const services: Service[] = [
     id: 'design-henna',
     name: 'Design + Henna',
     category: 'sobrancelhas',
-    priceBase: 55,
+    priceBase: 40,
     duration: 45,
     description: 'Design de sobrancelha finalizado com aplicação de henna para preenchimento natural e brilho.'
   },
@@ -390,7 +391,7 @@ export const services: Service[] = [
     id: 'producao-noiva',
     name: 'Produção da Noiva (Experiência 01)',
     category: 'noivas',
-    priceBase: 400,
+    priceBase: 500,
     duration: 90,
     description: 'Uma opção mais simples e objetiva para a noiva que deseja maquiagem e penteado social.',
     recommendations: [
@@ -405,7 +406,7 @@ export const services: Service[] = [
     id: 'noiva-civil',
     name: 'Noiva Civil (Experiência 02)',
     category: 'noivas',
-    priceBase: 500,
+    priceBase: 600,
     duration: 90,
     description: 'Uma produção especial para o casamento civil, com beleza e cuidado em cada detalhe.',
     recommendations: [
@@ -439,7 +440,7 @@ export const services: Service[] = [
     id: 'dia-noiva-cuidare',
     name: 'Dia da Noiva Cuidare (Experiência 04)',
     category: 'noivas',
-    priceBase: 2000,
+    priceBase: 2800,
     duration: 240,
     description: 'Um dia exclusivo dedicado à noiva, com tempo privativo, cuidado, relaxamento e tranquilidade durante toda a preparação.',
     recommendations: [

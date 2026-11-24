@@ -18,11 +18,11 @@ export const DEFAULT_SETTINGS: BusinessSettings = {
   openingHours: [
     { dayOfWeek: 0, open: '', close: '', closed: true }, // Domingo
     { dayOfWeek: 1, open: '', close: '', closed: true }, // Segunda
-    { dayOfWeek: 2, open: '08:00', close: '18:00', closed: false, breakStart: '11:30', breakEnd: '14:00' },
-    { dayOfWeek: 3, open: '08:00', close: '18:00', closed: false, breakStart: '11:30', breakEnd: '14:00' },
-    { dayOfWeek: 4, open: '08:00', close: '18:00', closed: false, breakStart: '11:30', breakEnd: '14:00' },
-    { dayOfWeek: 5, open: '08:00', close: '18:00', closed: false, breakStart: '11:30', breakEnd: '14:00' },
-    { dayOfWeek: 6, open: '08:00', close: '18:00', closed: false }, // Sábado
+    { dayOfWeek: 2, open: '08:00', close: '19:30', closed: false, breakStart: '11:30', breakEnd: '14:00' },
+    { dayOfWeek: 3, open: '08:00', close: '19:30', closed: false, breakStart: '11:30', breakEnd: '14:00' },
+    { dayOfWeek: 4, open: '08:00', close: '19:30', closed: false, breakStart: '11:30', breakEnd: '14:00' },
+    { dayOfWeek: 5, open: '08:00', close: '19:30', closed: false, breakStart: '11:30', breakEnd: '14:00' },
+    { dayOfWeek: 6, open: '08:00', close: '19:30', closed: false }, // Sábado
   ],
   commissionDefaultRate: 0.5,
   minLeadTimeMinutes: 30,
