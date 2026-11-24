@@ -10,7 +10,7 @@
 update public.services set price_base = 500  where id = 'producao-noiva';
 update public.services set price_base = 600  where id = 'noiva-civil';
 update public.services set price_base = 2800 where id = 'dia-noiva-cuidare';
-update public.services set price_base = 180, price_min = 180 where id = 'progressiva-com-formol';
+update public.services set price_base = 180, price_min = null, price_max = null where id = 'progressiva-com-formol';
 update public.services set price_base = 30 where id = 'design-sobrancelha';
 update public.services set price_base = 40 where id = 'design-henna';
 

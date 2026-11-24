@@ -171,7 +171,6 @@ export const services: Service[] = [
     name: 'Progressiva Com Formol',
     category: 'quimicas',
     priceBase: 180,
-    priceRange: { min: 180, max: 350 },
     duration: 150,
     description: 'Alisamento tradicional de alta eficácia com selagem térmica dos fios.',
     variablePrice: true,
