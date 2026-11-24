@@ -388,7 +388,7 @@ export const services: Service[] = [
   // NOIVAS & DEBUTANTES (MAÍSA RODRIGUES)
   {
     id: 'producao-noiva',
-    name: 'Produção da Noiva (Experiência 01)',
+    name: 'Noiva Social (Experiência 01)',
     category: 'noivas',
     priceBase: 500,
     duration: 90,

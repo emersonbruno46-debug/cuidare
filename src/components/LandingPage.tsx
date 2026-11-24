@@ -589,7 +589,7 @@ export default function LandingPage({ onOpenBooking, onNavigateToAdmin, professi
                   <ul className="space-y-2.5 text-sm text-[#29231F]">
                     <li className="flex justify-between border-b border-[#E6DFD5] pb-2">
                       <span className="text-[#5C534D]">Terça a Sexta</span>
-                      <span className="font-semibold text-right">08:00 às 11:30 • 14:00 às 19:30</span>
+                      <span className="font-semibold text-right">08:00 às 19:30 (direto)</span>
                     </li>
                     <li className="flex justify-between border-b border-[#E6DFD5] pb-2">
                       <span className="text-[#5C534D]">Sábado</span>

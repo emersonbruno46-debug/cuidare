@@ -142,12 +142,12 @@ const isAvailableBusy = isProfessionalAvailableForWindow(
 );
 assert(!isAvailableBusy, 'Horário ocupado (10:00 às 11:00) é reportado como indisponível');
 
-// Horário que invade intervalo de almoço (terça a sexta: pausa das 11:30 às 14:00)
-// Procedimento de 60 min começando às 11:00 terminaria às 12:00 -> invade pausa
+// Sem pausa de almoço do salão (as profissionais fazem rodízio)
+// Procedimento de 60 min começando às 11:00 terminaria às 12:00 -> aceito
 const isAvailableBreakOverlap = isProfessionalAvailableForWindow(
   'maisa', '2026-10-29', timeToMinutes('11:00'), 60, []
 );
-assert(!isAvailableBreakOverlap, 'Procedimento de 60 min às 11:00 invade o almoço (11:30) e é recusado');
+assert(isAvailableBreakOverlap, 'Procedimento de 60 min às 11:00 é aceito (sem pausa de almoço)');
 
 // Procedimento de 30 min às 11:00 termina às 11:30 -> dentro do expediente matutino
 const isAvailableBeforeBreak = isProfessionalAvailableForWindow(
